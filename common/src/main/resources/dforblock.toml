@@ -1,0 +1,37 @@
+
+### Discord ####
+# The token used to log into discord
+discordToken = "<DISCORD_TOKEN>"
+# The format to be used when creating a message on discord
+# Variables:
+#   author: the name of the author
+#   content: the message content
+discordChatFormat = "{author}» {content}"
+# Whether to use webhooks for creating messages
+useWebhooks = false
+# The url used to get the webhook avatar for minecraft players
+# Variables:
+#   username: the username of the player
+#   uuid: the uuid of the player
+minecraftAvatarProviderUrl = "https://mineatar.io/player/{uuid}"
+# The url used to get the webhook avatar for hytale players
+# Variables:
+#   username: the username of the player
+#   id: the id of the player
+minecraftAvatarProviderUrl = "https://mineatar.io/player/{uuid}"
+
+# Example channel configuration (the global channel is required)
+[[channels]]
+# Channel name (this is used internally and mapped to minecraft/hytale channel/team names)
+channelName = "global"
+# Discord channel id
+channelId = 1111111
+# This is the discord webhook id, can be removed if not using webhooks
+webhookId = 0000
+# This is the discord webhook token, can be removed if not using webhooks
+webhookToken = ""
+
+# Example staff channel
+[[channels]]
+channelName = "staff"
+channelId = 222222

@@ -1,6 +1,5 @@
 package dev.forb.dforblock
 
-import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
@@ -48,14 +47,13 @@ object DForBlock {
         }
 
         kord.on<MessageCreateEvent> {
-
             val payload = DiscordMessagePayload(
                 author = (message.author?: return@on).username,
                 content = message.content,
-                channel = message.channelId.value
+                channelID = message.channelId.value,
+                messageID = message.id.value,
             )
-            communicator.broadcastMessage(payload)
-            TODO("Check channel and route message correctly, etc..")
+            communicator.broadcastMessage(payload, config)
         }
 
         kord.on<DisconnectEvent> {
@@ -84,22 +82,15 @@ object DForBlock {
 
     fun handleBlockyMessage(payload: BlockyMessagePayload) {
         if (!isEnabled) {
-            logger.log(Level.SEVERE) { "Attempted to handle blocky message before enabling..." }
+            logger.severe { "Attempted to handle blocky message before enabling..." }
             return
         }
 
-        val channelId = Snowflake(
-            config.channels[payload.channel] ?:
-                return logger.log(Level.SEVERE) { "Failed to find channel ${payload.channel}, are you sure you configured it?" }
-        )
-
         botScope.launch {
-            kord.rest.channel.createMessage(
-                channelId = channelId
-            ) {
-                content = "${payload.author}: ${payload.content}"
-            }
-            TODO("Format message correctly, create webhook if enabled, etc...")
+            if (config.useWebhooks)
+                createWebhookMessage(config, kord, payload)
+            else
+                createMessage(config, kord, payload)
         }
     }
 }

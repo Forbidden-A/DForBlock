@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.slf4j.simple)
     implementation(libs.kord.core)
     compileOnly(libs.luckperms)
+    compileOnly(libs.kyori.api)
 }
 
 kotlin {

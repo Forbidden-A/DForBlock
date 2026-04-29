@@ -3,6 +3,7 @@ kotlin = "2.3.20"
 shadow = "9.4.1"
 slf4j = "2.0.17"
 
+kyori = "5.0.0"
 luckperms = "5.4"
 kord = "0.18.1"
 
@@ -16,6 +17,7 @@ slf4j-simple = { module="org.slf4j:slf4j-simple", version.ref="slf4j" }
 
 kord-core = { module="dev.kord:kord-core", version.ref="kord" }
 
+kyori-api = { module="net.kyori:adventure-api", version.ref = "kyori" }
 luckperms = { module="net.luckperms:api", version.ref="luckperms" }
 
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }

@@ -1,32 +1,42 @@
 package dev.forb.dforblock
 
-import dev.forb.dforblock.DForBlock.logger
-import net.kyori.adventure.text.Component
 import java.util.logging.Level
 import java.io.File
 
 class PaperCommunicator(val paper: DForBlockPaper) : IBlockyCommunicator {
-    private lateinit var config: DForBlockConfig
+
     override fun getConfigFile(): File {
-        TODO("Not yet implemented")
+        val config = File(paper.dataFolder, "dforblock.toml")
+        if (!config.exists()) {
+            config.parentFile.let { if (!it.exists()) it.mkdirs() }
+
+            paper.saveResource(config.path, false)
+        }
+        return config
     }
 
-    override fun broadcastMessage(payload: DiscordMessagePayload) {
-        paper.server.sendMessage {
-            Component.text("${config.discordPrefix}${payload.luckpermsPrefix}${payload.author} >> ${payload.content}")
+    override fun broadcastMessage(payload: DiscordMessagePayload, config: DForBlockConfig) {
+        val component = prepareMinecraftMessage(payload, config)
+
+        val channel = config.channels.firstOrNull { it.channelId == payload.channelID } ?: return
+
+        if (channel.channelName.equals("global", ignoreCase = true)) {
+            paper.server.sendMessage(component)
+        } else {
+          paper.logger.log(Level.WARNING) { "Other channels are W.I.P, this message with id '${payload.messageID}' will be ignored.." }
         }
-        TODO("Proper formatting and handling TODO")
     }
 
-    override fun onlinePlayers(): Set<String>? {
-        if (!paper.isEnabled) {
-            logger.log(Level.SEVERE) { "Plugin not enabled on server." }
-            return null
-        }
+    override fun onlinePlayers(): Set<String> {
         return paper.server.onlinePlayers.map { it.name }.toSortedSet()
     }
 
     override fun serverStatistics(): BlockyStatistics {
-        TODO("Not yet implemented")
+        return BlockyStatistics.MinecraftStatistics(
+            tps = paper.server.tps[1],
+            mspt = paper.server.averageTickTime,
+            onlinePlayers = paper.server.onlinePlayers.size,
+            playerLimit = paper.server.maxPlayers
+        )
     }
 }
