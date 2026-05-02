@@ -20,8 +20,9 @@ dependencies {
     implementation(libs.kord.core)
     implementation(libs.ktoml.core)
     implementation(libs.ktoml.file)
+    compileOnly(libs.adventure.api)
+    compileOnly(libs.adventure.minimessage)
     compileOnly(libs.luckperms)
-    compileOnly(libs.kyori.api)
 }
 
 kotlin {

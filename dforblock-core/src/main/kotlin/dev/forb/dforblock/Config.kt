@@ -9,8 +9,11 @@ import java.io.File
 @Serializable
 data class DForBlockConfig(
     val discordToken: String,
-    val discordChatFormat: String,
-    val minecraftChatFormat: String,
+    val toDiscordChatFormat: String,
+    val toMinecraftChatFormat: String,
+    val serverStartedMessage: String,
+    val serverStoppedMessage: String,
+    val globalChannelDescription: String,
     val channels: Set<ChannelConfig>,
     val useWebhooks: Boolean = false,
     val minecraftAvatarProviderUrl: String = "https://mineatar.io/player/{uuid}",
@@ -21,8 +24,8 @@ data class DForBlockConfig(
 data class ChannelConfig(
     val channelName: String,
     val channelId: ULong,
-    val webhookId: ULong?,
-    val webhookToken: String?,
+    val webhookId: ULong? = null,
+    val webhookToken: String? = null,
 )
 
-fun loadConfig(file: File): DForBlockConfig = TomlFileReader.decodeFromFile(serializer(), file.path)
+fun loadConfig(file: File): DForBlockConfig = TomlFileReader.decodeFromFile<DForBlockConfig>(serializer(), file.path)

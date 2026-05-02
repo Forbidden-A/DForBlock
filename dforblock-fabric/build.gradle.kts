@@ -7,7 +7,7 @@ plugins {
     id("maven-publish")
 }
 
-version = parent?.property("version") ?: "Unknown"
+version = rootProject.property("version") ?: "Unknown"
 group = "dev.forb"
 base.archivesName = project.property("archives_base_name") as String
 
@@ -22,9 +22,7 @@ java {
 
 
 fabricApi {
-    configureDataGeneration {
-        client = true
-    }
+
 }
 
 dependencies {
@@ -33,7 +31,10 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_api_version")}")
     implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
+    implementation("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
+    include("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
     implementation(project(":dforblock-core"))
+    include(project(":dforblock-core"))
 
 }
 
@@ -42,6 +43,8 @@ tasks.processResources {
     inputs.property("minecraft_version", project.property("minecraft_version"))
     inputs.property("loader_version", project.property("loader_version"))
     filteringCharset = "UTF-8"
+
+    from(rootProject.file("dforblock.toml"))
 
     filesMatching("fabric.mod.json") {
         expand("version" to project.version,

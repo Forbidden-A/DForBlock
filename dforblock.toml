@@ -6,19 +6,25 @@ discordToken = "<DISCORD_TOKEN>"
 # Variables:
 #   author: the name of the author
 #   content: the message content
-discordChatFormat = "{author}» {content}"
+toMinecraftChatFormat = "[Discord] {author} » {content}"
+toDiscordChatFormat = "{author} » {content}"
+# The message to send when the server starts and stops
+serverStartedMessage = "Server Started."
+serverStoppedMessage  = "Server Stopped."
+# Channel descripton
+globalChannelDescription = "{nPlayers}/{maxPlayers} Players. Running at {tps}t/s | {mspt}ms."
 # Whether to use webhooks for creating messages
 useWebhooks = false
 # The url used to get the webhook avatar for minecraft players
 # Variables:
 #   username: the username of the player
 #   uuid: the uuid of the player
-minecraftAvatarProviderUrl = "https://mineatar.io/player/{uuid}"
+minecraftAvatarProviderUrl = "https://api.mineatar.io/head/{uuid}?scale=16"
 # The url used to get the webhook avatar for hytale players
 # Variables:
 #   username: the username of the player
 #   id: the id of the player
-minecraftAvatarProviderUrl = "https://mineatar.io/player/{uuid}"
+hytaleAvatarProviderUrl = "https://mineatar.io/player/{uuid}"
 
 # Example channel configuration (the global channel is required)
 [[channels]]
