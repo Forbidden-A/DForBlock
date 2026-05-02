@@ -1,4 +1,4 @@
-include(":common", ":paper")
+include(":dforblock-core", ":dforblock-fabric")
 
 rootProject.name = "dforblock"
 
@@ -7,5 +7,14 @@ dependencyResolutionManagement {
         create("libs") {
             from(files("libs.versions.toml"))
         }
+    }
+}
+
+pluginManagement {
+    repositories {
+        maven("https://maven.fabricmc.net/") {
+            name = "Fabric"
+        }
+        gradlePluginPortal()
     }
 }

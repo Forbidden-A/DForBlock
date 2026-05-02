@@ -26,13 +26,17 @@ suspend fun createMessage(config: DForBlockConfig, kord: Kord, payload: BlockyMe
         return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
     )
 
-    kord.rest.channel.createMessage(
-        channelId = channelId
-    ) {
-        content = config.discordChatFormat
-            .replace("{author}", payload.author)
-            .replace("{content}", payload.messageContent)
+    try {
+        kord.rest.channel.createMessage(
+            channelId = channelId
+        ) {
+            content = config.discordChatFormat
+                .replace("{author}", payload.author)
+                .replace("{content}", payload.messageContent)
 
+        }
+    } catch (e: Exception) {
+        logger.warning { "Could not create message: ${e.message}" }
     }
 }
 

@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization")
     alias (libs.plugins.shadow)
 }
 
@@ -17,6 +18,8 @@ repositories {
 dependencies {
     implementation(libs.slf4j.simple)
     implementation(libs.kord.core)
+    implementation(libs.ktoml.core)
+    implementation(libs.ktoml.file)
     compileOnly(libs.luckperms)
     compileOnly(libs.kyori.api)
 }

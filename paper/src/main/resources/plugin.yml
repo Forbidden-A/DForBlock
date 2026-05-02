@@ -1,9 +1,0 @@
-name: paper
-description: $description
-version: '${version}'
-
-main: dev.forb.dforblock.DForBlockPaper
-api-version: '26.1.2'
-load: STARTUP
-
-authors: [ForbiddenBA]
