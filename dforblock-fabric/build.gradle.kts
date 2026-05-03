@@ -26,7 +26,6 @@ fabricApi {
 }
 
 dependencies {
-
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
     implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_api_version")}")
@@ -35,7 +34,6 @@ dependencies {
     include("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
     implementation(project(":dforblock-core"))
     include(project(":dforblock-core"))
-
 }
 
 tasks.processResources {

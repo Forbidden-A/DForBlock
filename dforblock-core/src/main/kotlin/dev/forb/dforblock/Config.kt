@@ -9,17 +9,30 @@ import java.io.File
 @Serializable
 data class DForBlockConfig(
     val discordToken: String,
-    val toDiscordChatFormat: String,
-    val toMinecraftChatFormat: String,
-    val serverStartedMessage: String,
-    val serverStoppedMessage: String,
-    val globalChannelDescription: String,
+    val formats: FormatsConfig,
+    val useDefaultChannelTopic: Boolean,
+    val defaultChannelTopic: String,
     val channels: Set<ChannelConfig>,
     val useWebhooks: Boolean = false,
-    val minecraftAvatarProviderUrl: String = "https://mineatar.io/player/{uuid}",
+    val minecraftAvatarProviderUrl: String = "https://api.mineatar.io/head/{uuid}?size=16",
     val hytaleAvatarProviderUrl: String = "https://hyvatar.io/render/{username}?size=128&rotate=22"
 )
 
+
+@Serializable
+data class FormatsConfig(
+    val toDiscordChatFormat: String,
+    val toMinecraftChatFormat: String,
+    val toHytaleChatFormat: String,
+    val serverStartedMessage: String,
+    val serverStoppedMessage: String,
+    val playerJoinedMessage: String,
+    val playerLeftMessage: String,
+    val playerDeathMessage: String,
+    val mcTaskAdvancementMessage: String,
+    val mcGoalAdvancementMessage: String,
+    val mcChallengeAdvancementMessage: String,
+)
 @Serializable
 data class ChannelConfig(
     val channelName: String,
@@ -28,4 +41,4 @@ data class ChannelConfig(
     val webhookToken: String? = null,
 )
 
-fun loadConfig(file: File): DForBlockConfig = TomlFileReader.decodeFromFile<DForBlockConfig>(serializer(), file.path)
+fun loadConfig(file: File): DForBlockConfig = TomlFileReader.decodeFromFile(serializer(), file.path)

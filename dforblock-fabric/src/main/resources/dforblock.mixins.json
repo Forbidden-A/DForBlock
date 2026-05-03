@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "dev.forb.dforblock.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "PlayerAdvancementTrackerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

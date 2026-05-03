@@ -1,22 +1,28 @@
 package dev.forb.dforblock
 
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 import net.fabricmc.loader.api.FabricLoader
-import net.kyori.adventure.chat.ChatType
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.player.Player
 import java.nio.file.Path
 import java.util.logging.Logger
 import kotlin.io.path.div
 
+
+val isLuckperms: Boolean = FabricLoader.getInstance().isModLoaded("luckperms")
+val logger: Logger = Logger.getLogger("DForBlock.fabric")
+val configDir: Path = FabricLoader.getInstance().configDir
+val configPath = configDir / "dforblock.toml"
+
 class DForBlockFabric : ModInitializer {
 
-    val logger: Logger = Logger.getLogger("DForBlock.fabric")
-
-    val configDir: Path = FabricLoader.getInstance().configDir
-    val configPath = configDir / "dforblock.toml"
 
     var minecraftServer: MinecraftServer? = null
         private set
@@ -39,14 +45,62 @@ class DForBlockFabric : ModInitializer {
 
         ServerMessageEvents.CHAT_MESSAGE.register { message, player, bound ->
             val content = message.unsignedContent()?.string ?: message.signedContent()
-            val payload = BlockyMessagePayload(
-                author = player.name.string,
+            var payload = BlockyMessagePayload(
+                author = player.displayName.string,
                 messageContent = content,
-                channelName = "global",
+                channelName = "default",
                 skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
             )
+            if (isLuckperms) {
+                payload = payload.copy(
+                    prefix = luckpermsPrefixByUUID(player.uuid),
+                    suffix = luckpermsSuffixByUUID(player.uuid)
+                )
+            }
             DForBlock.handleBlockyMessage(payload)
         }
+
+        ServerPlayerEvents.JOIN.register { player ->
+            var payload = PlayerJoinLeavePayload(player.displayName.string)
+            if (isLuckperms) {
+                payload = payload.copy(
+                    prefix = luckpermsPrefixByUUID(player.uuid),
+                    suffix = luckpermsSuffixByUUID(player.uuid)
+                )
+            }
+            DForBlock.handlePlayerJoined(payload)
+        }
+
+        ServerPlayerEvents.LEAVE.register { player ->
+            var payload = PlayerJoinLeavePayload(
+                player.displayName.string
+            )
+            if (isLuckperms) {
+                payload = payload.copy(
+                    prefix = luckpermsPrefixByUUID(player.uuid),
+                    suffix = luckpermsSuffixByUUID(player.uuid)
+                )
+            }
+            DForBlock.handlePlayerLeave(payload)
+        }
+
+        ServerLivingEntityEvents.AFTER_DEATH.register { entity, source ->
+            if (entity !is ServerPlayer)
+                return@register
+
+            var payload = PlayerDeathPayload(
+                playerName = entity.displayName.string,
+                deathMessage = source.getLocalizedDeathMessage(entity).string,
+            )
+            if (isLuckperms) {
+               payload = payload.copy(
+                   prefix = luckpermsPrefixByUUID(entity.uuid),
+                   suffix = luckpermsSuffixByUUID(entity.uuid)
+               )
+            }
+            DForBlock.handlePlayerDeath(payload)
+        }
+
     }
 
 }

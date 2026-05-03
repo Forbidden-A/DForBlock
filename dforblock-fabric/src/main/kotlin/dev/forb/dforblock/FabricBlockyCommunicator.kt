@@ -6,28 +6,30 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
-    override fun getConfigFile(): File = mod.configPath.toFile()
+
+    override fun isLuckperms(): Boolean = isLuckperms
+
+    override fun getConfigFile(): File = configPath.toFile()
 
     override fun ensureConfigFile(): Boolean {
         try {
-            mod.configDir.createDirectories()
+            configDir.createDirectories()
         } catch (e: Exception) {
-            mod.logger.severe { e.stackTraceToString() }
+            logger.severe { e.stackTraceToString() }
         }
-
-        if (!mod.configPath.exists())
+        if (!configPath.exists())
         {
             val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.toml")
             if (resourceStream != null) {
-                Files.copy(resourceStream, mod.configPath)
+                Files.copy(resourceStream, configPath)
                 resourceStream.close()
-                mod.logger.warning { "========================================"}
-                mod.logger.warning { "Created config file, please restart after configuring it correctly." }
-                mod.logger.warning { "========================================"}
+                logger.warning { "========================================"}
+                logger.warning { "Created config file, please restart after configuring it correctly." }
+                logger.warning { "========================================"}
             } else {
-                mod.logger.severe { "========================================"}
-                mod.logger.severe { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
-                mod.logger.severe { "========================================"}
+                logger.severe { "========================================"}
+                logger.severe { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
+                logger.severe { "========================================"}
             }
             return false
         }
@@ -39,18 +41,17 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         config: DForBlockConfig
     ) {
         val kyoriComponent = prepareMinecraftMiniMessage(payload, config)
-        println(kyoriComponent)
-        mod.adventure?.players()?.sendMessage(kyoriComponent)?: return mod.logger.severe { "Unexpected state, 'adventure is null', please report this.." }
+        mod.adventure?.players()?.sendMessage(kyoriComponent)?: return logger.severe { "Unexpected state, 'adventure is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =
         mod.minecraftServer?.playerList?.players?.map { it.displayName.toString() }?.toSet()
-            ?: emptySet<String>().apply { mod.logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." } }
+            ?: emptySet<String>().apply { logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." } }
 
     override fun serverStatistics(): BlockyStatistics {
         val minecraftServer = mod.minecraftServer
             ?: return BlockyStatistics.MinecraftStatistics(0.0, 0.0, 0.0, 0, 0).apply {
-                mod.logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." }
+                logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." }
             }
 
         val tickManager = minecraftServer.tickRateManager()

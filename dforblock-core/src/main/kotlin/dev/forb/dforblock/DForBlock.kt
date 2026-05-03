@@ -1,5 +1,6 @@
 package dev.forb.dforblock
 
+import dev.kord.common.entity.DiscordComponent
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
@@ -7,14 +8,15 @@ import dev.kord.core.entity.effectiveName
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.message.MessageCreateEvent
-import dev.kord.core.exception.EntityNotFoundException
 import dev.kord.core.on
-import dev.kord.gateway.DefaultGateway
-import dev.kord.gateway.Gateway
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
+import dev.kord.rest.builder.component.ContainerComponentBuilder
+import dev.kord.rest.builder.component.mediaGallery
+import dev.kord.rest.builder.component.textDisplay
+import dev.kord.rest.builder.message.container
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,8 +56,8 @@ object DForBlock {
             return logger.severe { "Failed to load config, start up halted: ${e.message}" }
         }
 
-        if (config.findChannelByName("global") == null)
-            return logger.severe { "You must configure a channel with the name 'global'." }
+        if (config.findChannelByName("default") == null)
+            return logger.severe { "You must configure a channel with the name 'default'." }
 
         botScope.launch { start() }
         isEnabled = true
@@ -144,11 +146,11 @@ object DForBlock {
     }
 
     fun handleServerStarted() {
-        val channelId = config.findChannelByName("global")?.channelId
-            ?: return logger.severe { "Couldn't find global channel id, how did we reach this point?" }
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
 
         sendDiscordMessage(
-            config.serverStartedMessage,
+            config.formats.serverStartedMessage,
             Snowflake(channelId),
             botScope,
             kord
@@ -156,16 +158,101 @@ object DForBlock {
     }
 
     fun handleServerStopped() {
-        val channelId = config.findChannelByName("global")?.channelId
-            ?: return logger.severe { "Couldn't find global channel id, how did we reach this point?" }
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
 
 
         sendDiscordMessage(
-            config.serverStoppedMessage,
+            config.formats.serverStoppedMessage,
             Snowflake(channelId),
             botScope,
             kord
         )
 
+    }
+
+    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        sendDiscordMessage(
+            config.formats.playerJoinedMessage
+                .replace("{player}", payload.playerName)
+                .replace("{prefix}", payload.prefix)
+                .replace("{suffix}", payload.suffix),
+            Snowflake(channelId),
+            botScope,
+            kord
+        )
+    }
+    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        sendDiscordMessage(
+            config.formats.playerLeftMessage
+                .replace("{player}", payload.playerName)
+                .replace("{prefix}", payload.prefix)
+                .replace("{suffix}", payload.suffix),
+            Snowflake(channelId),
+            botScope,
+            kord
+        )
+    }
+
+    fun handlePlayerDeath(payload: PlayerDeathPayload) {
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        val processedContent = config.formats.playerDeathMessage
+            .replace("{player}", payload.playerName)
+            .replace("{prefix}", payload.prefix)
+            .replace("{suffix}", payload.suffix)
+            .replace("{deathMessage}", payload.deathMessage)
+
+        sendDiscordMessage(
+            processedContent,
+            Snowflake(channelId),
+            botScope,
+            kord
+        )
+    }
+
+    fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
+        val channelId = config.findChannelByName("default")?.channelId
+            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        val format = when(payload.type) {
+            MCAdvancementMadePayload.MCAdvancementType.GOAL -> config.formats.mcGoalAdvancementMessage
+            MCAdvancementMadePayload.MCAdvancementType.CHALLENGE -> config.formats.mcChallengeAdvancementMessage
+            MCAdvancementMadePayload.MCAdvancementType.TASK -> config.formats.mcTaskAdvancementMessage
+        }
+
+        botScope.launch {
+            try {
+                kord.rest.channel.createMessage(Snowflake(channelId)) {
+                    container {
+                        payload.skinHint?.let { skinHint ->
+                            mediaGallery {
+                                item(config.minecraftAvatarProviderUrl
+                                    .replace("{uuid}", skinHint.uuid.toString())
+                                    .replace("{username}", skinHint.username)
+                                )
+                            }
+                        }
+                        textDisplay {
+                            content = format
+                                .replace("{player}", payload.playerName)
+                                .replace("{prefix}", payload.prefix)
+                                .replace("{suffix}", payload.suffix)
+                                .replace("{name}", payload.advancementName)
+                                .replace("{description}", payload.advancementDescription)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                logger.warning { "Failed to send advancement message: ${e.message}" }
+            }
+        }
     }
 }

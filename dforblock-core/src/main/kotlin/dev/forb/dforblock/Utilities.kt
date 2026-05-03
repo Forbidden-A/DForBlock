@@ -13,13 +13,12 @@ fun DForBlockConfig.findChannelByName(name: String): ChannelConfig? =
 
 fun DForBlockConfig.findChannelById(id: ULong): ChannelConfig? = channels.firstOrNull { it.channelId == id }
 fun prepareMinecraftMiniMessage(payload: DiscordMessagePayload, config: DForBlockConfig): Component {
-    val processedString = config.toMinecraftChatFormat
+    val channel = config.findChannelById(payload.channelId)
+    val processedString = config.formats.toMinecraftChatFormat
         .replace("{author}", payload.author)
         .replace("{content}", payload.content)
-
-    config.findChannelById(payload.channelId)?.apply {
-        processedString.replace("{channel}", channelName)
-    }
+        .replace("{role}", payload.role)
+        .replace("{channel}", channel?.channelName ?: "")
 
     val miniMessage = MiniMessage.miniMessage()
     return miniMessage.deserialize(processedString)
@@ -30,9 +29,11 @@ fun createMessage(config: DForBlockConfig, scope: CoroutineScope, kord: Kord, pa
         ?: return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
     sendDiscordMessage(
-        config.toDiscordChatFormat
+        config.formats.toDiscordChatFormat
             .replace("{author}", payload.author)
-            .replace("{content}", payload.messageContent),
+            .replace("{content}", payload.messageContent)
+            .replace("{prefix}", payload.prefix)
+            .replace("{suffix}", payload.suffix),
         Snowflake(channel.channelId),
         scope,
         kord,
@@ -54,9 +55,11 @@ fun createWebhookMessage(config: DForBlockConfig, scope: CoroutineScope, kord: K
     scope.launch {
         try {
             kord.rest.webhook.executeWebhook(webhookId, channel.webhookToken) {
-                content = config.toDiscordChatFormat
+                content = config.formats.toDiscordChatFormat
                     .replace("{author}", payload.author)
                     .replace("{content}", payload.messageContent)
+                    .replace("{prefix}", payload.prefix)
+                    .replace("{suffix}", payload.suffix)
                 username = payload.author
                 payload.skinHint?.let { skinHint ->
                     avatarUrl = when (skinHint) {
