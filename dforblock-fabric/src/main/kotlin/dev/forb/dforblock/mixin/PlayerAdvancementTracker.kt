@@ -25,7 +25,7 @@ open class PlayerAdvancementTrackerMixin {
     private fun onAdvancementGain(holder: AdvancementHolder, criterion: String, callBackInfo: CallbackInfoReturnable<Boolean>) {
         if (!callBackInfo.returnValue) return
 
-        @Suppress("KotlinConstantConditions")
+        @Suppress("CAST_NEVER_SUCCEEDS")
         if (!(this as PlayerAdvancements).getOrStartProgress(holder).isDone) return
 
         val displayOptional = holder.value.display()

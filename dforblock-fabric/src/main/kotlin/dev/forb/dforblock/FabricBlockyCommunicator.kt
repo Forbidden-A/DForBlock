@@ -7,8 +7,6 @@ import kotlin.io.path.exists
 
 class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
 
-    override fun isLuckperms(): Boolean = isLuckperms
-
     override fun getConfigFile(): File = configPath.toFile()
 
     override fun ensureConfigFile(): Boolean {

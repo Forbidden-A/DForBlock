@@ -4,8 +4,6 @@ import java.io.File
 
 interface IBlockyCommunicator {
 
-    fun isLuckperms(): Boolean
-
     fun getConfigFile(): File
 
     fun ensureConfigFile(): Boolean
