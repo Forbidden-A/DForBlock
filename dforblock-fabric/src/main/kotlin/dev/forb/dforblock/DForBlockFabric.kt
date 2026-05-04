@@ -19,7 +19,7 @@ import kotlin.io.path.div
 val isLuckperms: Boolean = FabricLoader.getInstance().isModLoaded("luckperms")
 val logger: Logger = Logger.getLogger("DForBlock.fabric")
 val configDir: Path = FabricLoader.getInstance().configDir
-val configPath = configDir / "dforblock.toml"
+val configPath = configDir / "dforblock.json5"
 
 class DForBlockFabric : ModInitializer {
 

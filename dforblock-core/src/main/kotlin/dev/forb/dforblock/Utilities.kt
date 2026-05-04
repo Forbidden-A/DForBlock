@@ -8,28 +8,27 @@ import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 
-fun DForBlockConfig.findChannelByName(name: String): ChannelConfig? =
-    channels.firstOrNull { it.channelName.equals(name, ignoreCase = true) }
+fun DForBlockConfig.findChannelById(id: ULong): Pair<String, ChannelConfig>? = channels.entries.firstOrNull {
+    it.value.channelId == id
+}?.toPair()
 
-fun DForBlockConfig.findChannelById(id: ULong): ChannelConfig? = channels.firstOrNull { it.channelId == id }
 fun prepareMinecraftMiniMessage(payload: DiscordMessagePayload, config: DForBlockConfig): Component {
-    val channel = config.findChannelById(payload.channelId)
-    val processedString = config.formats.toMinecraftChatFormat
+    val channelEntry = config.findChannelById(payload.channelId)
+    val channelName = channelEntry?.first ?: ""
+
+    val processedString = config.formats.minecraftChatFormat
         .replace("{author}", payload.author)
         .replace("{content}", payload.content)
         .replace("{role}", payload.role)
-        .replace("{channel}", channel?.channelName ?: "")
+        .replace("{channel}", channelName)
 
     val miniMessage = MiniMessage.miniMessage()
     return miniMessage.deserialize(processedString)
 }
 
-fun createMessage(config: DForBlockConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
-    val channel = config.findChannelByName(payload.channelName)
-        ?: return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
-
+fun createMessage(config: DForBlockConfig, channel: ChannelConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
     sendDiscordMessage(
-        config.formats.toDiscordChatFormat
+        config.formats.discordChatFormat
             .replace("{author}", payload.author)
             .replace("{content}", payload.messageContent)
             .replace("{prefix}", payload.prefix)
@@ -40,10 +39,7 @@ fun createMessage(config: DForBlockConfig, scope: CoroutineScope, kord: Kord, pa
     )
 }
 
-fun createWebhookMessage(config: DForBlockConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
-    val channel = config.findChannelByName(payload.channelName)
-        ?: return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
-
+fun createWebhookMessage(config: DForBlockConfig, channel: ChannelConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
     if (channel.webhookId == null || channel.webhookToken == null) {
         return logger.severe {
             "Attempted to create a webhook message with a misconfigured webhookId or webhookToken for channel '${payload.channelName}' with id '${channel.channelId}'."
@@ -55,7 +51,7 @@ fun createWebhookMessage(config: DForBlockConfig, scope: CoroutineScope, kord: K
     scope.launch {
         try {
             kord.rest.webhook.executeWebhook(webhookId, channel.webhookToken) {
-                content = config.formats.toDiscordChatFormat
+                content = config.formats.discordChatFormat
                     .replace("{author}", payload.author)
                     .replace("{content}", payload.messageContent)
                     .replace("{prefix}", payload.prefix)

@@ -1,6 +1,5 @@
 package dev.forb.dforblock
 
-import dev.kord.common.entity.DiscordComponent
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
@@ -13,7 +12,6 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
-import dev.kord.rest.builder.component.ContainerComponentBuilder
 import dev.kord.rest.builder.component.mediaGallery
 import dev.kord.rest.builder.component.textDisplay
 import dev.kord.rest.builder.message.container
@@ -21,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.util.logging.Logger
 
 /*
@@ -29,6 +28,14 @@ import java.util.logging.Logger
 object DForBlock {
 
     val logger: Logger = Logger.getLogger("DForBlock.core")
+
+    val json = Json {
+        prettyPrint = true
+        isLenient = true
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
     var isEnabled: Boolean = false
         private set
 
@@ -51,12 +58,12 @@ object DForBlock {
             return logger.severe { "Start up halted: Failed to load config file." }
 
         try {
-            config = loadConfig(communicator.getConfigFile())
+            config = loadConfig(communicator.getConfigFile(), json)
         } catch (e: Exception) {
             return logger.severe { "Failed to load config, start up halted: ${e.message}" }
         }
 
-        if (config.findChannelByName("default") == null)
+        if (config.channels["default"] == null)
             return logger.severe { "You must configure a channel with the name 'default'." }
 
         botScope.launch { start() }
@@ -110,7 +117,7 @@ object DForBlock {
         logger.info { "Initialising DForBlock..." }
         initialise()
         logger.info { "Logging in..." }
-        kord.login() {
+        kord.login {
             intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
         }
     }
@@ -137,20 +144,24 @@ object DForBlock {
             return
         }
 
+        val channel = config.channels[payload.channelName]
+            ?: return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
-        if (config.useWebhooks)
-            createWebhookMessage(config, botScope, kord, payload)
+        if (channel.useWebhooks)
+            createWebhookMessage(config, channel, botScope, kord, payload)
         else
-            createMessage(config, botScope, kord, payload)
+            createMessage(config, channel, botScope, kord, payload)
 
     }
 
     fun handleServerStarted() {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
 
+        val channelId = channel.channelId
+
         sendDiscordMessage(
-            config.formats.serverStartedMessage,
+            config.formats.serverStartMessage,
             Snowflake(channelId),
             botScope,
             kord
@@ -158,12 +169,14 @@ object DForBlock {
     }
 
     fun handleServerStopped() {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        val channelId = channel.channelId
 
 
         sendDiscordMessage(
-            config.formats.serverStoppedMessage,
+            config.formats.serverStopMessage,
             Snowflake(channelId),
             botScope,
             kord
@@ -172,11 +185,13 @@ object DForBlock {
     }
 
     fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
 
+        val channelId = channel.channelId
+
         sendDiscordMessage(
-            config.formats.playerJoinedMessage
+            config.formats.playerJoinMessage
                 .replace("{player}", payload.playerName)
                 .replace("{prefix}", payload.prefix)
                 .replace("{suffix}", payload.suffix),
@@ -186,11 +201,13 @@ object DForBlock {
         )
     }
     fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
 
+        val channelId = channel.channelId
+
         sendDiscordMessage(
-            config.formats.playerLeftMessage
+            config.formats.playerLeaveMessage
                 .replace("{player}", payload.playerName)
                 .replace("{prefix}", payload.prefix)
                 .replace("{suffix}", payload.suffix),
@@ -201,8 +218,10 @@ object DForBlock {
     }
 
     fun handlePlayerDeath(payload: PlayerDeathPayload) {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        val channelId = channel.channelId
 
         val processedContent = config.formats.playerDeathMessage
             .replace("{player}", payload.playerName)
@@ -219,8 +238,10 @@ object DForBlock {
     }
 
     fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
-        val channelId = config.findChannelByName("default")?.channelId
+        val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+
+        val channelId = channel.channelId
 
         val format = when(payload.type) {
             MCAdvancementMadePayload.MCAdvancementType.GOAL -> config.formats.mcGoalAdvancementMessage
@@ -236,7 +257,7 @@ object DForBlock {
                             mediaGallery {
                                 item(config.minecraftAvatarProviderUrl
                                     .replace("{uuid}", skinHint.uuid.toString())
-                                    .replace("{username}", skinHint.username)
+                                    .replace("{username}", skinHint.username),
                                 )
                             }
                         }

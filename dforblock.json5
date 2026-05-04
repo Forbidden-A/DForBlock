@@ -1,0 +1,74 @@
+{
+  // The token used to log into discord
+  discordToken: "<DISCORD_TOKEN>",
+  // Whether or not to update the default channel's topic every 5 minutes
+  useDefaultChannelTopic: true,
+  // The url used to get the webhook avatar for minecraft players
+  // Variables:
+  //   username: the username of the player
+  //   uuid: the uuid of the player
+  minecraftAvatarProviderUrl: "https://api.mineatar.io/head/{uuid}?scale=16",
+  // The url used to get the webhook avatar for hytale players
+  // Variables:
+  //   username: the username of the player
+  //   id: the id of the player
+  hytaleAvatarProviderUrl: "https://hyvatar.io/render/{username}?size=128&rotate=22",
+  formats: {
+    // The format to use when creating a message in minecraft and hytale
+    // Variables:
+    //   author: the name of the user who sent the discord message
+    //   content: the content of the discord message
+    //   role: the user's topmost role (if the user doesn't have a role, this will be "Discord")
+    minecraftChatFormat: "[{role}] {author} » {content}",
+    hytaleChatFormat: "[{role}] {author} » {content}",
+    // The format to be used when a player joins or leaves
+    // Variables:
+    //   player: the name of the player
+    //   prefix: luckperms prefix
+    //   suffix: luckperms suffix
+    playerJoinMessage: "{prefix}{player}{suffix} joined the game.",
+    playerLeaveMessage: "{prefix}{player}{suffix} left the game.",
+    // The format to be used when a player dies
+    // Variables:
+    //   player, prefix, suffix: same as above
+    //   deathMessage: the server-provided death message
+    playerDeathMessage: "{deathMessage}",
+    // The formats to be used when a minecraft player gains an advancement
+    // Variables:
+    //   player, prefix, suffix: same as above
+    //   name, description: advancement name and description
+    mcTaskAdvancementMessage: "{prefix}{player}{suffix} completed the task `{name}`: {description}",
+    mcGoalAdvancementMessage: "{prefix}{player}{suffix} achieved the goal `{name}`: {description}",
+    mcChallengeAdvancementMessage: "{prefix}{player}{suffix} completed the challenge `{name}`: {description}",
+    // The messages to be sent when the server starts and stops
+    serverStartMessage: "Server Started.",
+    serverStopMessage: "Server Stopped.",
+    // The format to be used when creating a discord message
+    // Variables:
+    //  Shared:
+    //   author: the name of the author
+    //   content: the message content
+    //   prefix: luckperms prefix
+    //   suffix: luckperms suffix
+    discordChatFormat: "{prefix}{author}{suffix}» {content}",
+    // The default channel's topic to be updated every 5 minutes
+    defaultChannelTopic: "{nPlayers}/{maxPlayers} Players. Running at {tps}t/s | {mspt}ms.",
+  },
+
+  // Example channel configuration (the default channel is required)
+  channels: {
+    default: {
+      // Discord channel id
+      channelId: 1111111,
+      useWebhooks: true,
+      // This is the discord webhook id, can be removed if not using webhooks
+      webhookId: 0,
+      // This is the discord webhook token, can be removed if not using webhooks
+      webhookToken: "",
+    },
+    staff: {
+      // Example staff channel that does not use webhooks
+      channelId: 222222,
+    },
+  },
+}

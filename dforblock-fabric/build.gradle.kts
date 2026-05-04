@@ -42,7 +42,7 @@ tasks.processResources {
     inputs.property("loader_version", project.property("loader_version"))
     filteringCharset = "UTF-8"
 
-    from(rootProject.file("dforblock.toml"))
+    from(rootProject.file("dforblock.json5"))
 
     filesMatching("fabric.mod.json") {
         expand("version" to project.version,

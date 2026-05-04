@@ -17,7 +17,7 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         }
         if (!configPath.exists())
         {
-            val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.toml")
+            val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.json5")
             if (resourceStream != null) {
                 Files.copy(resourceStream, configPath)
                 resourceStream.close()
