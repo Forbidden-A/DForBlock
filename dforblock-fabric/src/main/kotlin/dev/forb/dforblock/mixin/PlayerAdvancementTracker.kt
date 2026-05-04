@@ -2,6 +2,7 @@ package dev.forb.dforblock.mixin
 
 import dev.forb.dforblock.DForBlock
 import dev.forb.dforblock.MCAdvancementMadePayload
+import dev.forb.dforblock.SkinHint
 import dev.forb.dforblock.isLuckperms
 import dev.forb.dforblock.luckpermsPrefixByUUID
 import dev.forb.dforblock.luckpermsSuffixByUUID
@@ -42,6 +43,7 @@ open class PlayerAdvancementTrackerMixin {
             advancementName = displayInfo.title.string,
             advancementDescription = displayInfo.description.string,
             type = advancementType,
+            skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
         )
         if (isLuckperms) {
             payload = payload.copy(

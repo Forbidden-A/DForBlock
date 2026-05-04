@@ -1,5 +1,8 @@
 package dev.forb.dforblock
 
+import dev.kord.common.Color
+import dev.kord.common.entity.MessageFlag
+import dev.kord.common.entity.MessageFlags
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
@@ -21,6 +24,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.util.logging.Logger
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 /*
 * This is the entry point of this project
@@ -156,7 +161,7 @@ object DForBlock {
 
     fun handleServerStarted() {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -170,7 +175,7 @@ object DForBlock {
 
     fun handleServerStopped() {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -186,7 +191,7 @@ object DForBlock {
 
     fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -202,7 +207,7 @@ object DForBlock {
     }
     fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -219,7 +224,7 @@ object DForBlock {
 
     fun handlePlayerDeath(payload: PlayerDeathPayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -239,7 +244,7 @@ object DForBlock {
 
     fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel id, how did we reach this point?" }
+            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -252,15 +257,16 @@ object DForBlock {
         botScope.launch {
             try {
                 kord.rest.channel.createMessage(Snowflake(channelId)) {
+                    flags = MessageFlags(MessageFlag.IsComponentsV2)
                     container {
-                        payload.skinHint?.let { skinHint ->
+                        accentColor = Color(Random.nextInt(0..256), Random.nextInt(0..256), Random.nextInt(0..256))
+                        if (payload.skinHint != null)
                             mediaGallery {
                                 item(config.minecraftAvatarProviderUrl
-                                    .replace("{uuid}", skinHint.uuid.toString())
-                                    .replace("{username}", skinHint.username),
+                                    .replace("{uuid}", payload.skinHint.uuid.toString())
+                                    .replace("{username}", payload.skinHint.username),
                                 )
                             }
-                        }
                         textDisplay {
                             content = format
                                 .replace("{player}", payload.playerName)
