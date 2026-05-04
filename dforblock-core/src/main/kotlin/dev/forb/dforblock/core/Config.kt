@@ -2,8 +2,8 @@ package dev.forb.dforblock.core
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.File
 import li.songe.json5.decodeFromJson5String
+import java.io.File
 
 @Serializable
 data class DForBlockConfig(
@@ -31,6 +31,7 @@ data class FormatsConfig(
     val discordChatFormat: String,
     val defaultChannelTopic: String,
 )
+
 @Serializable
 data class ChannelConfig(
     val channelId: ULong,

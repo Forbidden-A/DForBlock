@@ -50,11 +50,10 @@
     //   content: the message content
     //   prefix: luckperms prefix
     //   suffix: luckperms suffix
-    discordChatFormat: "{prefix}{author}{suffix}» {content}",
+    discordChatFormat: "{prefix}{player}{suffix}» {content}",
     // The default channel's topic to be updated every 5 minutes
     defaultChannelTopic: "{nPlayers}/{maxPlayers} Players. Running at {tps}t/s | {mspt}ms.",
   },
-
   // Example channel configuration (the default channel is required)
   channels: {
     default: {

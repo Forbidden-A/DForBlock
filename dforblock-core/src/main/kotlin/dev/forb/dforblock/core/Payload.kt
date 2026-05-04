@@ -1,7 +1,7 @@
 package dev.forb.dforblock.core
 
 data class BlockyMessagePayload(
-    val author: String,
+    val player: String,
     val messageContent: String,
     val channelName: String = "default",
     val skinHint: SkinHint? = null,

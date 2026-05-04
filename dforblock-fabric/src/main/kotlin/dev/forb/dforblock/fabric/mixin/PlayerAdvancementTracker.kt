@@ -1,11 +1,7 @@
 package dev.forb.dforblock.fabric.mixin
 
-import dev.forb.dforblock.core.DForBlock
-import dev.forb.dforblock.core.MCAdvancementMadePayload
-import dev.forb.dforblock.core.SkinHint
+import dev.forb.dforblock.core.*
 import dev.forb.dforblock.fabric.isLuckperms
-import dev.forb.dforblock.core.luckpermsPrefixByUUID
-import dev.forb.dforblock.core.luckpermsSuffixByUUID
 import net.minecraft.advancements.AdvancementHolder
 import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.PlayerAdvancements
@@ -23,7 +19,11 @@ open class PlayerAdvancementTrackerMixin {
     lateinit var player: ServerPlayer
 
     @Inject(method = ["award"], at = [At("RETURN")])
-    private fun onAdvancementGain(holder: AdvancementHolder, criterion: String, callBackInfo: CallbackInfoReturnable<Boolean>) {
+    private fun onAdvancementGain(
+        holder: AdvancementHolder,
+        criterion: String,
+        callBackInfo: CallbackInfoReturnable<Boolean>
+    ) {
         if (!callBackInfo.returnValue) return
 
         @Suppress("CAST_NEVER_SUCCEEDS")
@@ -33,7 +33,7 @@ open class PlayerAdvancementTrackerMixin {
         if (displayOptional.isEmpty) return
         val displayInfo = displayOptional.get()
 
-        val advancementType = when(displayInfo.type) {
+        val advancementType = when (displayInfo.type) {
             AdvancementType.TASK -> MCAdvancementMadePayload.MCAdvancementType.TASK
             AdvancementType.GOAL -> MCAdvancementMadePayload.MCAdvancementType.GOAL
             AdvancementType.CHALLENGE -> MCAdvancementMadePayload.MCAdvancementType.CHALLENGE

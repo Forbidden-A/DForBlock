@@ -1,7 +1,7 @@
 package dev.forb.dforblock.core
 
 import net.luckperms.api.LuckPermsProvider
-import java.util.UUID
+import java.util.*
 
 fun luckpermsPrefixByUUID(player: UUID): String {
     val provider = LuckPermsProvider.get()

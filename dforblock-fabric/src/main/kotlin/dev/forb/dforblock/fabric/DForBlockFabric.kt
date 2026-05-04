@@ -1,12 +1,6 @@
 package dev.forb.dforblock.fabric
 
-import dev.forb.dforblock.core.BlockyMessagePayload
-import dev.forb.dforblock.core.DForBlock
-import dev.forb.dforblock.core.PlayerDeathPayload
-import dev.forb.dforblock.core.PlayerJoinLeavePayload
-import dev.forb.dforblock.core.SkinHint
-import dev.forb.dforblock.core.luckpermsPrefixByUUID
-import dev.forb.dforblock.core.luckpermsSuffixByUUID
+import dev.forb.dforblock.core.*
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
@@ -51,7 +45,7 @@ class DForBlockFabric : ModInitializer {
         ServerMessageEvents.CHAT_MESSAGE.register { message, player, bound ->
             val content = message.unsignedContent()?.string ?: message.signedContent()
             var payload = BlockyMessagePayload(
-                author = player.displayName.string,
+                player = player.displayName.string,
                 messageContent = content,
                 channelName = "default",
                 skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
@@ -98,10 +92,10 @@ class DForBlockFabric : ModInitializer {
                 deathMessage = source.getLocalizedDeathMessage(entity).string,
             )
             if (isLuckperms) {
-               payload = payload.copy(
-                   prefix = luckpermsPrefixByUUID(entity.uuid),
-                   suffix = luckpermsSuffixByUUID(entity.uuid)
-               )
+                payload = payload.copy(
+                    prefix = luckpermsPrefixByUUID(entity.uuid),
+                    suffix = luckpermsSuffixByUUID(entity.uuid)
+                )
             }
             DForBlock.handlePlayerDeath(payload)
         }

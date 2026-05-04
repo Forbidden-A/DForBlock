@@ -26,10 +26,16 @@ fun prepareMinecraftMiniMessage(payload: DiscordMessagePayload, config: DForBloc
     return miniMessage.deserialize(processedString)
 }
 
-fun createMessage(config: DForBlockConfig, channel: ChannelConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
+fun createMessage(
+    config: DForBlockConfig,
+    channel: ChannelConfig,
+    scope: CoroutineScope,
+    kord: Kord,
+    payload: BlockyMessagePayload
+) {
     sendDiscordMessage(
         config.formats.discordChatFormat
-            .replace("{author}", payload.author)
+            .replace("{player}", payload.player)
             .replace("{content}", payload.messageContent)
             .replace("{prefix}", payload.prefix)
             .replace("{suffix}", payload.suffix),
@@ -39,7 +45,13 @@ fun createMessage(config: DForBlockConfig, channel: ChannelConfig, scope: Corout
     )
 }
 
-fun createWebhookMessage(config: DForBlockConfig, channel: ChannelConfig, scope: CoroutineScope, kord: Kord, payload: BlockyMessagePayload) {
+fun createWebhookMessage(
+    config: DForBlockConfig,
+    channel: ChannelConfig,
+    scope: CoroutineScope,
+    kord: Kord,
+    payload: BlockyMessagePayload
+) {
     if (channel.webhookId == null || channel.webhookToken == null) {
         return logger.severe {
             "Attempted to create a webhook message with a misconfigured webhookId or webhookToken for channel '${payload.channelName}' with id '${channel.channelId}'."
@@ -52,11 +64,11 @@ fun createWebhookMessage(config: DForBlockConfig, channel: ChannelConfig, scope:
         try {
             kord.rest.webhook.executeWebhook(webhookId, channel.webhookToken) {
                 content = config.formats.discordChatFormat
-                    .replace("{author}", payload.author)
+                    .replace("{player}", payload.player)
                     .replace("{content}", payload.messageContent)
                     .replace("{prefix}", payload.prefix)
                     .replace("{suffix}", payload.suffix)
-                username = payload.author
+                username = payload.player
                 payload.skinHint?.let { skinHint ->
                     avatarUrl = when (skinHint) {
                         is SkinHint.Minecraft -> {

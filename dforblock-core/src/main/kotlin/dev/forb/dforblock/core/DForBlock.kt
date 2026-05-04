@@ -92,14 +92,14 @@ object DForBlock {
                 return@on
 
             try {
-                 message.getGuildOrNull() ?: return@on
+                message.getGuildOrNull() ?: return@on
             } catch (exception: RequestException) {
                 logger.warning { "Unexpected exception while getting guild: ${exception.message}" }
                 return@on
             }
 
             if (message.content.isEmpty())
-                return@on logger.warning { "detected empty discord message, are you sure you enabled the message content intent?"}
+                return@on logger.warning { "detected empty discord message, are you sure you enabled the message content intent?" }
 
             val member = message.getAuthorAsMemberOrNull()
             val name = member?.effectiveName ?: message.author?.effectiveName ?: "Unknown"
@@ -130,6 +130,8 @@ object DForBlock {
     private suspend fun stop() {
         logger.info { "Logging out..." }
         kord.shutdown()
+        logger.info { "Logged out." }
+        isReady = false
     }
 
     fun disable() {
@@ -205,6 +207,7 @@ object DForBlock {
             kord
         )
     }
+
     fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
         val channel = config.channels["default"]
             ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
@@ -248,7 +251,7 @@ object DForBlock {
 
         val channelId = channel.channelId
 
-        val format = when(payload.type) {
+        val format = when (payload.type) {
             MCAdvancementMadePayload.MCAdvancementType.GOAL -> config.formats.mcGoalAdvancementMessage
             MCAdvancementMadePayload.MCAdvancementType.CHALLENGE -> config.formats.mcChallengeAdvancementMessage
             MCAdvancementMadePayload.MCAdvancementType.TASK -> config.formats.mcTaskAdvancementMessage
@@ -262,9 +265,10 @@ object DForBlock {
                         accentColor = Color(Random.nextInt(0..256), Random.nextInt(0..256), Random.nextInt(0..256))
                         if (payload.skinHint != null)
                             mediaGallery {
-                                item(config.minecraftAvatarProviderUrl
-                                    .replace("{uuid}", payload.skinHint.uuid.toString())
-                                    .replace("{username}", payload.skinHint.username),
+                                item(
+                                    config.minecraftAvatarProviderUrl
+                                        .replace("{uuid}", payload.skinHint.uuid.toString())
+                                        .replace("{username}", payload.skinHint.username),
                                 )
                             }
                         textDisplay {

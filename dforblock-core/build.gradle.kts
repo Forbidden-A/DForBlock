@@ -3,11 +3,11 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    alias (libs.plugins.shadow)
+    alias(libs.plugins.shadow)
 }
 
 group = "dev.forb.dforblock"
-version = "1.0-SNAPSHOT"
+version = "0.0.1"
 
 repositories {
     mavenCentral()

@@ -1,10 +1,6 @@
 package dev.forb.dforblock.fabric
 
-import dev.forb.dforblock.core.BlockyStatistics
-import dev.forb.dforblock.core.DForBlockConfig
-import dev.forb.dforblock.core.DiscordMessagePayload
-import dev.forb.dforblock.core.IBlockyCommunicator
-import dev.forb.dforblock.core.prepareMinecraftMiniMessage
+import dev.forb.dforblock.core.*
 import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.createDirectories
@@ -20,19 +16,18 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         } catch (e: Exception) {
             logger.severe { e.stackTraceToString() }
         }
-        if (!configPath.exists())
-        {
+        if (!configPath.exists()) {
             val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.json5")
             if (resourceStream != null) {
                 Files.copy(resourceStream, configPath)
                 resourceStream.close()
-                logger.warning { "========================================"}
+                logger.warning { "========================================" }
                 logger.warning { "Created config file, please restart after configuring it correctly." }
-                logger.warning { "========================================"}
+                logger.warning { "========================================" }
             } else {
-                logger.severe { "========================================"}
+                logger.severe { "========================================" }
                 logger.severe { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
-                logger.severe { "========================================"}
+                logger.severe { "========================================" }
             }
             return false
         }
@@ -44,7 +39,8 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         config: DForBlockConfig
     ) {
         val kyoriComponent = prepareMinecraftMiniMessage(payload, config)
-        mod.adventure?.players()?.sendMessage(kyoriComponent)?: return logger.severe { "Unexpected state, 'adventure is null', please report this.." }
+        mod.adventure?.players()?.sendMessage(kyoriComponent)
+            ?: return logger.severe { "Unexpected state, 'adventure is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =

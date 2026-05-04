@@ -8,14 +8,14 @@ luckperms = "5.4"
 kord = "0.18.1"
 
 [libraries]
-slf4j-simple = { module="org.slf4j:slf4j-simple", version.ref="slf4j" }
-json5 = { module="li.songe:json5", version.ref="json5" }
-kord-core = { module="dev.kord:kord-core", version.ref="kord" }
-adventure-api = { module="net.kyori:adventure-api", version.ref = "adventure" }
-adventure-minimessage = { module="net.kyori:adventure-text-minimessage", version.ref = "adventure" }
-luckperms = { module="net.luckperms:api", version.ref="luckperms" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+json5 = { module = "li.songe:json5", version.ref = "json5" }
+kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
+adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
+adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
+luckperms = { module = "net.luckperms:api", version.ref = "luckperms" }
 
 [plugins]
-kotlin-jvm = { id="org.jetbrains.kotlin.jvm", version.ref="kotlin" }
-kotlin-plugin-serialization = { id="org.jetbrains.kotlin.plugin.serialization", version.ref="kotlin" }
-shadow = { id="com.gradleup.shadow", version.ref="shadow" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

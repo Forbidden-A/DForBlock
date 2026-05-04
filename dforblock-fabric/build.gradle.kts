@@ -45,10 +45,11 @@ tasks.processResources {
     from(rootProject.file("dforblock.json5"))
 
     filesMatching("fabric.mod.json") {
-        expand("version" to project.version,
-            "minecraft_version" to (project.property("minecraft_version")?: "Failed to get version"),
-            "loader_version" to (project.property("loader_version")?: "Failed to get version"),
-            "kotlin_loader_version" to (project.property("kotlin_loader_version")?: "Failed to get version")
+        expand(
+            "version" to project.version,
+            "minecraft_version" to (project.property("minecraft_version") ?: "Failed to get version"),
+            "loader_version" to (project.property("loader_version") ?: "Failed to get version"),
+            "kotlin_loader_version" to (project.property("kotlin_loader_version") ?: "Failed to get version")
         )
     }
 }
