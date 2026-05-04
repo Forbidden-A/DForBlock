@@ -1,11 +1,11 @@
-package dev.forb.dforblock.mixin
+package dev.forb.dforblock.fabric.mixin
 
-import dev.forb.dforblock.DForBlock
-import dev.forb.dforblock.MCAdvancementMadePayload
-import dev.forb.dforblock.SkinHint
-import dev.forb.dforblock.isLuckperms
-import dev.forb.dforblock.luckpermsPrefixByUUID
-import dev.forb.dforblock.luckpermsSuffixByUUID
+import dev.forb.dforblock.core.DForBlock
+import dev.forb.dforblock.core.MCAdvancementMadePayload
+import dev.forb.dforblock.core.SkinHint
+import dev.forb.dforblock.fabric.isLuckperms
+import dev.forb.dforblock.core.luckpermsPrefixByUUID
+import dev.forb.dforblock.core.luckpermsSuffixByUUID
 import net.minecraft.advancements.AdvancementHolder
 import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.PlayerAdvancements

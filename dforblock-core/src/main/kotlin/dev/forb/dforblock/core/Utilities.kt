@@ -1,6 +1,6 @@
-package dev.forb.dforblock
+package dev.forb.dforblock.core
 
-import dev.forb.dforblock.DForBlock.logger
+import dev.forb.dforblock.core.DForBlock.logger
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import kotlinx.coroutines.CoroutineScope

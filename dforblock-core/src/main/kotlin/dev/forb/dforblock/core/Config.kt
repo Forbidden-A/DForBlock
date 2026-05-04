@@ -1,4 +1,4 @@
-package dev.forb.dforblock
+package dev.forb.dforblock.core
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

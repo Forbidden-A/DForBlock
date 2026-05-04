@@ -1,4 +1,4 @@
-package dev.forb.dforblock
+package dev.forb.dforblock.core
 
 import dev.kord.common.Color
 import dev.kord.common.entity.MessageFlag

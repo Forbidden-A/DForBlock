@@ -1,4 +1,4 @@
-package dev.forb.dforblock
+package dev.forb.dforblock.core
 
 import net.luckperms.api.LuckPermsProvider
 import java.util.UUID

@@ -1,5 +1,10 @@
-package dev.forb.dforblock
+package dev.forb.dforblock.fabric
 
+import dev.forb.dforblock.core.BlockyStatistics
+import dev.forb.dforblock.core.DForBlockConfig
+import dev.forb.dforblock.core.DiscordMessagePayload
+import dev.forb.dforblock.core.IBlockyCommunicator
+import dev.forb.dforblock.core.prepareMinecraftMiniMessage
 import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.createDirectories

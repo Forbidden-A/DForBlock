@@ -13,7 +13,7 @@
   "environment": "server",
   "entrypoints": {
     "main": [
-      "dev.forb.dforblock.DForBlockFabric"
+      "dev.forb.dforblock.fabric.DForBlockFabric"
     ]
   },
   "mixins": ["dforblock.mixins.json"],
