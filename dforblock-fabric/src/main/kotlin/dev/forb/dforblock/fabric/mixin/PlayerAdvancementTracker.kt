@@ -3,7 +3,6 @@ package dev.forb.dforblock.fabric.mixin
 import dev.forb.dforblock.core.*
 import dev.forb.dforblock.fabric.isLuckperms
 import net.minecraft.advancements.AdvancementHolder
-import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.PlayerAdvancements
 import net.minecraft.server.level.ServerPlayer
 import org.spongepowered.asm.mixin.Mixin

@@ -1,6 +1,8 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+evaluationDependsOn(":dforblock-core")
+
 plugins {
     kotlin("jvm")
     id("net.fabricmc.fabric-loom") version "1.16-SNAPSHOT"
@@ -16,7 +18,6 @@ val targetJavaVersion = 25
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-
     withSourcesJar()
 }
 
@@ -33,7 +34,8 @@ dependencies {
     implementation("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
     include("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
     implementation(project(":dforblock-core"))
-    include(project(":dforblock-core"))
+    include(project(":dforblock-core", configuration = "shadow"))
+    compileOnly(libs.kotlin.logging)
 }
 
 tasks.processResources {

@@ -16,12 +16,12 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.container
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.util.logging.Logger
 import kotlin.random.Random
 import kotlin.random.nextInt
 
@@ -30,7 +30,7 @@ import kotlin.random.nextInt
 *  */
 object DForBlock {
 
-    val logger: Logger = Logger.getLogger("DForBlock.core")
+    val LOGGER = KotlinLogging.logger{}
 
     val json = Json {
         prettyPrint = true
@@ -54,24 +54,24 @@ object DForBlock {
     private val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun enable(icommunicator: IBlockyCommunicator) {
-        logger.info { "DForBlock starting..." }
+        LOGGER.info { "DForBlock starting..." }
         communicator = icommunicator
 
         if (!communicator.ensureConfigFile())
-            return logger.severe { "Start up halted: Failed to load config file." }
+            return LOGGER.error { "Start up halted: Failed to load config file." }
 
         try {
             config = loadConfig(communicator.getConfigFile(), json)
         } catch (e: Exception) {
-            return logger.severe { "Failed to load config, start up halted: ${e.message}" }
+            return LOGGER.error { "Failed to load config, start up halted: ${e.message}" }
         }
 
         if (config.channels["default"] == null)
-            return logger.severe { "You must configure a channel with the name 'default'." }
+            return LOGGER.error { "You must configure a channel with the name 'default'." }
 
         botScope.launch { start() }
         isEnabled = true
-        logger.info { "DForBlock enabled." }
+        LOGGER.info { "DForBlock enabled." }
     }
 
     private suspend fun initialise() {
@@ -81,7 +81,7 @@ object DForBlock {
 
         kord.on<ReadyEvent> {
             isReady = true
-            logger.info { "DForBlock is now ready." }
+            LOGGER.info { "DForBlock is now ready." }
             handleServerStarted()
         }
 
@@ -92,15 +92,15 @@ object DForBlock {
             try {
                 message.getGuildOrNull() ?: return@on
             } catch (exception: RequestException) {
-                logger.warning { "Unexpected exception while getting guild: ${exception.message}" }
+                LOGGER.warn { "Unexpected exception while getting guild: ${exception.message}" }
                 return@on
             }
 
             if (message.content.isEmpty())
-                return@on logger.warning { "detected empty discord message, are you sure you enabled the message content intent?" }
+                return@on LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" }
 
-            val member = message.getAuthorAsMemberOrNull()
-            val name = member?.effectiveName ?: message.author?.effectiveName ?: "Unknown"
+            val member = message.getAuthorAsMemberOrNull() ?: message.author
+            val name = member?.effectiveName ?: "Unknown"
             val payload = DiscordMessagePayload(
                 author = name,
                 content = message.content,
@@ -111,46 +111,46 @@ object DForBlock {
         }
 
         kord.on<DisconnectEvent> {
-            logger.info { "Gateway disconnected." }
+            LOGGER.info { "Gateway disconnected." }
         }
     }
 
     @OptIn(PrivilegedIntent::class)
     private suspend fun start() {
-        logger.info { "Initialising DForBlock..." }
+        LOGGER.info { "Initialising DForBlock..." }
         initialise()
-        logger.info { "Logging in..." }
+        LOGGER.info { "Logging in..." }
         kord.login {
             intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
         }
     }
 
     private suspend fun stop() {
-        logger.info { "Logging out..." }
+        LOGGER.info { "Logging out..." }
         kord.shutdown()
-        logger.info { "Logged out." }
+        LOGGER.info { "Logged out." }
         isReady = false
     }
 
     fun disable() {
         if (!isEnabled)
-            return logger.info { "Mod is not enabled, nothing to do!" }
+            return LOGGER.info { "Mod is not enabled, nothing to do!" }
 
-        logger.info { "Termination requested..." }
+        LOGGER.info { "Termination requested..." }
         handleServerStopped()
         botScope.launch { stop() }
         isEnabled = false
-        logger.info { "DForBlock disabled." }
+        LOGGER.info { "DForBlock disabled." }
     }
 
     fun handleBlockyMessage(payload: BlockyMessagePayload) {
         if (!isReady) {
-            logger.warning { "Attempted to handle message before discord is ready, ignoring..." }
+            LOGGER.warn { "Attempted to handle message before discord is ready, ignoring..." }
             return
         }
 
         val channel = config.channels[payload.channelName]
-            ?: return logger.warning { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
+            ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
         if (channel.useWebhooks)
             createWebhookMessage(config, channel, botScope, kord, payload)
@@ -161,7 +161,7 @@ object DForBlock {
 
     fun handleServerStarted() {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -175,7 +175,7 @@ object DForBlock {
 
     fun handleServerStopped() {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -191,7 +191,7 @@ object DForBlock {
 
     fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -208,7 +208,7 @@ object DForBlock {
 
     fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -225,7 +225,7 @@ object DForBlock {
 
     fun handlePlayerDeath(payload: PlayerDeathPayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
 
@@ -245,14 +245,14 @@ object DForBlock {
                     }
                 }
             } catch (e: Exception) {
-                logger.warning { "Failed to send death message: ${e.stackTraceToString()}" }
+                LOGGER.warn { "Failed to send death message: ${e.stackTraceToString()}" }
             }
         }
     }
 
     fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
         val channel = config.channels["default"]
-            ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
+            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
         val processedContent = config.formats.mcAdvancementMadeMessage
@@ -272,7 +272,7 @@ object DForBlock {
                     }
                 }
             } catch (e: Exception) {
-                logger.warning { "Failed to send advancement message: ${e.stackTraceToString()}" }
+                LOGGER.warn { "Failed to send advancement message: ${e.stackTraceToString()}" }
             }
         }
     }

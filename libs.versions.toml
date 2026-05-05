@@ -1,16 +1,18 @@
 [versions]
 kotlin = "2.3.21"
+kotlinx-coroutines = "1.10.2"
 shadow = "9.4.1"
-slf4j = "2.0.17"
+kotlin-logging = "7.0.3"
 json5 = "0.5.0"
 adventure = "5.0.0"
 luckperms = "5.4"
 kord = "0.18.1"
 
 [libraries]
-slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+kotlin-logging = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlin-logging" }
 json5 = { module = "li.songe:json5", version.ref = "json5" }
 kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
+kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 adventure-api = { module = "net.kyori:adventure-api", version.ref = "adventure" }
 adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 luckperms = { module = "net.luckperms:api", version.ref = "luckperms" }

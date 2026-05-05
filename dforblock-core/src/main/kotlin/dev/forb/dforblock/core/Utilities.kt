@@ -1,6 +1,6 @@
 package dev.forb.dforblock.core
 
-import dev.forb.dforblock.core.DForBlock.logger
+import dev.forb.dforblock.core.DForBlock.LOGGER
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +53,7 @@ fun createWebhookMessage(
     payload: BlockyMessagePayload
 ) {
     if (channel.webhookId == null || channel.webhookToken == null) {
-        return logger.severe {
+        return LOGGER.error {
             "Attempted to create a webhook message with a misconfigured webhookId or webhookToken for channel '${payload.channelName}' with id '${channel.channelId}'."
         }
     }
@@ -85,7 +85,7 @@ fun createWebhookMessage(
                     }
             }
         } catch (e: Exception) {
-            logger.warning { "Could not create webhook message: ${e.stackTraceToString()}" }
+            LOGGER.warn { "Could not create webhook message: ${e.stackTraceToString()}" }
         }
     }
 }
@@ -99,7 +99,7 @@ fun sendDiscordMessage(messageContent: String, channel: Snowflake, scope: Corout
                 content = messageContent
             }
         } catch (e: Exception) {
-            logger.warning { "Could not create message: ${e.stackTraceToString()}" }
+            LOGGER.warn { "Could not create message: ${e.stackTraceToString()}" }
         }
     }
 }

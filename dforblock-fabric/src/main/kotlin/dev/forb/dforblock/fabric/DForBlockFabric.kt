@@ -11,12 +11,10 @@ import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Path
-import java.util.logging.Logger
 import kotlin.io.path.div
 
 
 val isLuckperms: Boolean = FabricLoader.getInstance().isModLoaded("luckperms")
-val logger: Logger = Logger.getLogger("DForBlock.fabric")
 val configDir: Path = FabricLoader.getInstance().configDir
 val configPath = configDir / "dforblock.json5"
 

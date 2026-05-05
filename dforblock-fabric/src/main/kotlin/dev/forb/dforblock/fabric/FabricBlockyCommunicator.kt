@@ -14,21 +14,18 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         try {
             configDir.createDirectories()
         } catch (e: Exception) {
-            logger.severe { e.stackTraceToString() }
+            DForBlock.LOGGER.error { e.stackTraceToString() }
         }
         if (!configPath.exists()) {
             val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.json5")
             if (resourceStream != null) {
                 Files.copy(resourceStream, configPath)
                 resourceStream.close()
-                logger.warning { "========================================" }
-                logger.warning { "Created config file, please restart after configuring it correctly." }
-                logger.warning { "========================================" }
-            } else {
-                logger.severe { "========================================" }
-                logger.severe { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
-                logger.severe { "========================================" }
-            }
+                DForBlock.LOGGER.warn { "========================================" }
+                DForBlock.LOGGER.warn { "Created config file, please restart after configuring it correctly." }
+                DForBlock.LOGGER.warn { "========================================" }
+            } else
+                DForBlock.LOGGER.error { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
             return false
         }
         return true
@@ -40,17 +37,17 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
     ) {
         val kyoriComponent = prepareMinecraftMiniMessage(payload, config)
         mod.adventure?.players()?.sendMessage(kyoriComponent)
-            ?: return logger.severe { "Unexpected state, 'adventure is null', please report this.." }
+            ?: return DForBlock.LOGGER.error { "Unexpected state, 'adventure is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =
         mod.minecraftServer?.playerList?.players?.map { it.displayName.toString() }?.toSet()
-            ?: emptySet<String>().apply { logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." } }
+            ?: emptySet<String>().apply { DForBlock.LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
 
     override fun serverStatistics(): BlockyStatistics {
         val minecraftServer = mod.minecraftServer
             ?: return BlockyStatistics.MinecraftStatistics(0.0, 0.0, 0.0, 0, 0).apply {
-                logger.severe { "Unexpected state, 'minecraftServer is null', please report this.." }
+                DForBlock.LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
             }
 
         val tickManager = minecraftServer.tickRateManager()
