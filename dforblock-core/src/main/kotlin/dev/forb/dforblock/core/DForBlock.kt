@@ -25,25 +25,22 @@ import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.random.nextInt
 
+val LOGGER = KotlinLogging.logger {}
+val JSON = Json {
+    prettyPrint = true
+    isLenient = true
+    encodeDefaults = true
+    ignoreUnknownKeys = true
+}
+
 /*
 * This is the entry point of this project
 *  */
-object DForBlock {
-
-    val LOGGER = KotlinLogging.logger {}
+class DForBlock(val communicator: IBlockyCommunicator) {
 
     private val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    val json = Json {
-        prettyPrint = true
-        isLenient = true
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
-
     private lateinit var kord: Kord
-
-    private lateinit var communicator: IBlockyCommunicator
 
     private lateinit var config: DForBlockConfig
 
@@ -56,15 +53,14 @@ object DForBlock {
         private set
 
 
-    fun enable(icommunicator: IBlockyCommunicator) {
+    fun enable() {
         LOGGER.info { "DForBlock starting..." }
-        communicator = icommunicator
 
         if (!communicator.ensureConfigFile())
             return LOGGER.error { "Start up halted: Failed to load config file." }
 
         try {
-            config = loadConfig(communicator.getConfigFile(), json)
+            config = loadConfig(communicator.getConfigFile(), JSON)
         } catch (e: Exception) {
             return LOGGER.error { "Start up halted: Failed to load config: ${e.stackTraceToString()}" }
         }
@@ -72,7 +68,7 @@ object DForBlock {
         val defaultChannel = config.channels["default"]
             ?: return LOGGER.error { "Start up halted: You must configure a channel with the name 'default'." }
 
-        DForBlock.defaultChannel = defaultChannel
+        this.defaultChannel = defaultChannel
 
         botScope.launch { start() }
         isEnabled = true

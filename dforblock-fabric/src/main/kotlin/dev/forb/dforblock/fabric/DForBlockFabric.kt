@@ -20,6 +20,16 @@ val configPath = configDir / "dforblock.json5"
 
 class DForBlockFabric : ModInitializer {
 
+    companion object {
+        lateinit var INSTANCE: DForBlockFabric
+            private set
+        val isInitialized: Boolean
+            get() = ::INSTANCE.isInitialized
+    }
+
+    init {
+        INSTANCE = this
+    }
 
     var minecraftServer: MinecraftServer? = null
         private set
@@ -27,15 +37,21 @@ class DForBlockFabric : ModInitializer {
     var adventure: MinecraftServerAudiences? = null
         private set
 
+    lateinit var dForBlock: DForBlock
+    lateinit var communicator: IBlockyCommunicator
+
     override fun onInitialize() {
+        INSTANCE = this
         ServerLifecycleEvents.SERVER_STARTING.register { server ->
             minecraftServer = server
             adventure = MinecraftServerAudiences.of(server)
-            DForBlock.enable(FabricBlockyCommunicator(this))
+            communicator = FabricBlockyCommunicator(this)
+            dForBlock = DForBlock(communicator)
+            dForBlock.enable()
         }
 
         ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
-            DForBlock.disable()
+            dForBlock.disable()
             minecraftServer = null
             adventure = null
         }
@@ -54,7 +70,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            DForBlock.handleBlockyMessage(payload)
+            dForBlock.handleBlockyMessage(payload)
         }
 
         ServerPlayerEvents.JOIN.register { player ->
@@ -65,7 +81,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            DForBlock.handlePlayerJoined(payload)
+            dForBlock.handlePlayerJoined(payload)
         }
 
         ServerPlayerEvents.LEAVE.register { player ->
@@ -78,7 +94,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            DForBlock.handlePlayerLeave(payload)
+            dForBlock.handlePlayerLeave(payload)
         }
 
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, source ->
@@ -95,7 +111,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(entity.uuid)
                 )
             }
-            DForBlock.handlePlayerDeath(payload)
+            dForBlock.handlePlayerDeath(payload)
         }
 
     }

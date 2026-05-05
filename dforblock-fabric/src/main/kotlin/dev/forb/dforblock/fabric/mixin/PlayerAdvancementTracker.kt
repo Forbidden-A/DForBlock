@@ -1,6 +1,7 @@
 package dev.forb.dforblock.fabric.mixin
 
 import dev.forb.dforblock.core.*
+import dev.forb.dforblock.fabric.DForBlockFabric
 import dev.forb.dforblock.fabric.isLuckperms
 import net.minecraft.advancements.AdvancementHolder
 import net.minecraft.server.PlayerAdvancements
@@ -23,6 +24,9 @@ open class PlayerAdvancementTrackerMixin {
         criterion: String,
         callBackInfo: CallbackInfoReturnable<Boolean>
     ) {
+        if (!DForBlockFabric.isInitialized)
+            return
+
         val displayOptional = holder.value.display()
         if (displayOptional.isEmpty) return
         val displayInfo = displayOptional.get()
@@ -39,6 +43,6 @@ open class PlayerAdvancementTrackerMixin {
                 suffix = luckpermsSuffixByUUID(player.uuid),
             )
 
-        DForBlock.handleMCAdvancementMade(payload)
+        DForBlockFabric.INSTANCE.dForBlock.handleMCAdvancementMade(payload)
     }
 }
