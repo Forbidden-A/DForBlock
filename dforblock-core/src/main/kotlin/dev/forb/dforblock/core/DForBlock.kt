@@ -255,14 +255,7 @@ object DForBlock {
             ?: return logger.severe { "Couldn't find default channel, how did we reach this point?" }
 
         val channelId = channel.channelId
-
-        val format = when (payload.type) {
-            MCAdvancementMadePayload.MCAdvancementType.GOAL -> config.formats.mcGoalAdvancementMessage
-            MCAdvancementMadePayload.MCAdvancementType.CHALLENGE -> config.formats.mcChallengeAdvancementMessage
-            MCAdvancementMadePayload.MCAdvancementType.TASK -> config.formats.mcTaskAdvancementMessage
-        }
-
-        val processedContent = format
+        val processedContent = config.formats.mcAdvancementMadeMessage
             .replace("{player}", payload.playerName)
             .replace("{prefix}", payload.prefix)
             .replace("{suffix}", payload.suffix)

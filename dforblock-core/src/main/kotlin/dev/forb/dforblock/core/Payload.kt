@@ -37,11 +37,6 @@ data class MCAdvancementMadePayload(
     val skinHint: SkinHint.Minecraft? = null,
     val advancementName: String,
     val advancementDescription: String,
-    val type: MCAdvancementType,
     val prefix: String = "",
     val suffix: String = ""
-) {
-    enum class MCAdvancementType {
-        GOAL, CHALLENGE, TASK
-    }
-}
+)

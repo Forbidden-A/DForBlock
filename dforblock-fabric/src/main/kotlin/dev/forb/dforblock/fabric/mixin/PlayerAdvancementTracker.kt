@@ -18,39 +18,27 @@ open class PlayerAdvancementTrackerMixin {
     @Shadow
     lateinit var player: ServerPlayer
 
-    @Inject(method = ["award"], at = [At("RETURN")])
+    @Inject(method = ["award"], at = [At(value = "INVOKE", target = "Lnet/minecraft/advancements/AdvancementRewards;grant(Lnet/minecraft/server/level/ServerPlayer;)V")])
     private fun onAdvancementGain(
         holder: AdvancementHolder,
         criterion: String,
         callBackInfo: CallbackInfoReturnable<Boolean>
     ) {
-        if (!callBackInfo.returnValue) return
-
-        @Suppress("CAST_NEVER_SUCCEEDS")
-        if (!(this as PlayerAdvancements).getOrStartProgress(holder).isDone) return
-
         val displayOptional = holder.value.display()
         if (displayOptional.isEmpty) return
         val displayInfo = displayOptional.get()
 
-        val advancementType = when (displayInfo.type) {
-            AdvancementType.TASK -> MCAdvancementMadePayload.MCAdvancementType.TASK
-            AdvancementType.GOAL -> MCAdvancementMadePayload.MCAdvancementType.GOAL
-            AdvancementType.CHALLENGE -> MCAdvancementMadePayload.MCAdvancementType.CHALLENGE
-        }
         var payload = MCAdvancementMadePayload(
             playerName = player.displayName.string,
             advancementName = displayInfo.title.string,
             advancementDescription = displayInfo.description.string,
-            type = advancementType,
             skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
         )
-        if (isLuckperms) {
+        if (isLuckperms)
             payload = payload.copy(
                 prefix = luckpermsPrefixByUUID(player.uuid),
                 suffix = luckpermsSuffixByUUID(player.uuid),
             )
-        }
 
         DForBlock.handleMCAdvancementMade(payload)
     }

@@ -33,13 +33,11 @@
     //   player, prefix, suffix: same as above
     //   deathMessage: the server-provided death message
     playerDeathMessage: "**{deathMessage}**",
-    // The formats to be used when a minecraft player gains an advancement
+    // The format to be used when a minecraft player gains an advancement
     // Variables:
     //   player, prefix, suffix: same as above
     //   name, description: advancement name and description
-    mcTaskAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
-    mcGoalAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
-    mcChallengeAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
+    mcAdvancementMadeMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
     // The messages to be sent when the server starts and stops
     serverStartMessage: "**Server Started**",
     serverStopMessage: "**Server Stopped**",
