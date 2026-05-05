@@ -47,7 +47,7 @@ class DForBlockFabric : ModInitializer {
             adventure = MinecraftServerAudiences.of(server)
             communicator = FabricBlockyCommunicator(this)
             dForBlock = DForBlock(communicator)
-            dForBlock.enable()
+            dForBlock.start()
         }
 
         ServerLifecycleEvents.SERVER_STOPPING.register { _ ->

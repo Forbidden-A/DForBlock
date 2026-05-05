@@ -46,14 +46,14 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     private lateinit var defaultChannel: ChannelConfig
 
-    var isEnabled: Boolean = false
+    var isInitialised: Boolean = false
         private set
 
     var isReady: Boolean = false
         private set
 
 
-    fun enable() {
+    fun start() {
         LOGGER.info { "DForBlock starting..." }
 
         if (!communicator.ensureConfigFile())
@@ -70,12 +70,12 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
         this.defaultChannel = defaultChannel
 
-        botScope.launch { start() }
-        isEnabled = true
-        LOGGER.info { "DForBlock enabled." }
+        botScope.launch { login() }
+        isInitialised = true
+        LOGGER.info { "Initialisation complete.."}
     }
 
-    private suspend fun initialise() {
+    private suspend fun setup() {
         kord = Kord(config.discordToken) {
             enableShutdownHook = true
         }
@@ -93,7 +93,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             try {
                 message.getGuildOrNull() ?: return@on
             } catch (exception: RequestException) {
-                LOGGER.warn { "Unexpected exception while getting guild: ${exception.message}" }
+                LOGGER.warn { "Unexpected exception while getting guild: ${exception.stackTraceToString()}" }
                 return@on
             }
 
@@ -117,16 +117,16 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     }
 
     @OptIn(PrivilegedIntent::class)
-    private suspend fun start() {
+    private suspend fun login() {
         LOGGER.info { "Initialising DForBlock..." }
-        initialise()
+        setup()
         LOGGER.info { "Logging in..." }
         kord.login {
             intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
         }
     }
 
-    private suspend fun stop() {
+    private suspend fun logout() {
         LOGGER.info { "Logging out..." }
         kord.shutdown()
         LOGGER.info { "Logged out." }
@@ -134,13 +134,13 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     }
 
     fun disable() {
-        if (!isEnabled)
-            return LOGGER.info { "Mod is not enabled, nothing to do!" }
+        if (!isInitialised)
+            return LOGGER.info { "Instance is not initialised, nothing to do.." }
 
         LOGGER.info { "Termination requested..." }
         handleServerStopped()
-        botScope.launch { stop() }
-        isEnabled = false
+        botScope.launch { logout() }
+        isInitialised = false
         LOGGER.info { "DForBlock disabled." }
     }
 
