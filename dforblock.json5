@@ -26,23 +26,23 @@
     //   player: the name of the player
     //   prefix: luckperms prefix
     //   suffix: luckperms suffix
-    playerJoinMessage: "{prefix}{player}{suffix} joined the game.",
-    playerLeaveMessage: "{prefix}{player}{suffix} left the game.",
+    playerJoinMessage: "**{prefix}{player}{suffix} joined the game**",
+    playerLeaveMessage: "**{prefix}{player}{suffix} left the game**",
     // The format to be used when a player dies
     // Variables:
     //   player, prefix, suffix: same as above
     //   deathMessage: the server-provided death message
-    playerDeathMessage: "{deathMessage}",
+    playerDeathMessage: "**{deathMessage}**",
     // The formats to be used when a minecraft player gains an advancement
     // Variables:
     //   player, prefix, suffix: same as above
     //   name, description: advancement name and description
-    mcTaskAdvancementMessage: "{prefix}{player}{suffix} completed the task `{name}`: {description}",
-    mcGoalAdvancementMessage: "{prefix}{player}{suffix} achieved the goal `{name}`: {description}",
-    mcChallengeAdvancementMessage: "{prefix}{player}{suffix} completed the challenge `{name}`: {description}",
+    mcTaskAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
+    mcGoalAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
+    mcChallengeAdvancementMessage: "**{prefix}{player}{suffix} has made the advancement {name}: *{description}***",
     // The messages to be sent when the server starts and stops
-    serverStartMessage: "Server Started.",
-    serverStopMessage: "Server Stopped.",
+    serverStartMessage: "**Server Started**",
+    serverStopMessage: "**Server Stopped**",
     // The format to be used when creating a discord message
     // Variables:
     //   author: the name of the author

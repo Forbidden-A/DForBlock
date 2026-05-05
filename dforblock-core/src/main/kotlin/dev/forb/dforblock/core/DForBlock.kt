@@ -15,8 +15,6 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
-import dev.kord.rest.builder.component.mediaGallery
-import dev.kord.rest.builder.component.textDisplay
 import dev.kord.rest.builder.message.container
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -237,12 +235,19 @@ object DForBlock {
             .replace("{suffix}", payload.suffix)
             .replace("{deathMessage}", payload.deathMessage)
 
-        sendDiscordMessage(
-            processedContent,
-            Snowflake(channelId),
-            botScope,
-            kord
-        )
+        botScope.launch {
+            try {
+                kord.rest.channel.createMessage(Snowflake(channelId)) {
+                    flags = MessageFlags(MessageFlag.IsComponentsV2)
+                    container {
+                        accentColor = Color(Random.nextInt(0..0xFFFFFF))
+                        textDisplay(processedContent)
+                    }
+                }
+            } catch (e: Exception) {
+                logger.warning { "Failed to send death message: ${e.stackTraceToString()}" }
+            }
+        }
     }
 
     fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
@@ -257,32 +262,24 @@ object DForBlock {
             MCAdvancementMadePayload.MCAdvancementType.TASK -> config.formats.mcTaskAdvancementMessage
         }
 
+        val processedContent = format
+            .replace("{player}", payload.playerName)
+            .replace("{prefix}", payload.prefix)
+            .replace("{suffix}", payload.suffix)
+            .replace("{name}", payload.advancementName)
+            .replace("{description}", payload.advancementDescription)
+
         botScope.launch {
             try {
                 kord.rest.channel.createMessage(Snowflake(channelId)) {
                     flags = MessageFlags(MessageFlag.IsComponentsV2)
                     container {
-                        accentColor = Color(Random.nextInt(0..256), Random.nextInt(0..256), Random.nextInt(0..256))
-                        if (payload.skinHint != null)
-                            mediaGallery {
-                                item(
-                                    config.minecraftAvatarProviderUrl
-                                        .replace("{uuid}", payload.skinHint.uuid.toString())
-                                        .replace("{username}", payload.skinHint.username),
-                                )
-                            }
-                        textDisplay {
-                            content = format
-                                .replace("{player}", payload.playerName)
-                                .replace("{prefix}", payload.prefix)
-                                .replace("{suffix}", payload.suffix)
-                                .replace("{name}", payload.advancementName)
-                                .replace("{description}", payload.advancementDescription)
-                        }
+                        accentColor = Color(Random.nextInt(0..0xFFFFFF))
+                        textDisplay(processedContent)
                     }
                 }
             } catch (e: Exception) {
-                logger.warning { "Failed to send advancement message: ${e.message}" }
+                logger.warning { "Failed to send advancement message: ${e.stackTraceToString()}" }
             }
         }
     }

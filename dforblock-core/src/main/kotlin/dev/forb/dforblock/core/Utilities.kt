@@ -85,7 +85,7 @@ fun createWebhookMessage(
                     }
             }
         } catch (e: Exception) {
-            logger.warning { "Could not create webhook message: ${e.message}" }
+            logger.warning { "Could not create webhook message: ${e.stackTraceToString()}" }
         }
     }
 }
@@ -99,7 +99,7 @@ fun sendDiscordMessage(messageContent: String, channel: Snowflake, scope: Corout
                 content = messageContent
             }
         } catch (e: Exception) {
-            logger.warning { "Could not create message: ${e.message}" }
+            logger.warning { "Could not create message: ${e.stackTraceToString()}" }
         }
     }
 }
