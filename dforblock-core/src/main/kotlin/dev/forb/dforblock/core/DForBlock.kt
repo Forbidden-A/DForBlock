@@ -30,7 +30,9 @@ import kotlin.random.nextInt
 *  */
 object DForBlock {
 
-    val LOGGER = KotlinLogging.logger{}
+    val LOGGER = KotlinLogging.logger {}
+
+    private val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     val json = Json {
         prettyPrint = true
@@ -39,19 +41,20 @@ object DForBlock {
         ignoreUnknownKeys = true
     }
 
+    private lateinit var kord: Kord
+
+    private lateinit var communicator: IBlockyCommunicator
+
+    private lateinit var config: DForBlockConfig
+
+    private lateinit var defaultChannel: ChannelConfig
+
     var isEnabled: Boolean = false
         private set
 
     var isReady: Boolean = false
         private set
 
-    private lateinit var communicator: IBlockyCommunicator
-
-    private lateinit var config: DForBlockConfig
-
-    private lateinit var kord: Kord
-
-    private val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun enable(icommunicator: IBlockyCommunicator) {
         LOGGER.info { "DForBlock starting..." }
@@ -63,11 +66,13 @@ object DForBlock {
         try {
             config = loadConfig(communicator.getConfigFile(), json)
         } catch (e: Exception) {
-            return LOGGER.error { "Failed to load config, start up halted: ${e.message}" }
+            return LOGGER.error { "Start up halted: Failed to load config: ${e.stackTraceToString()}" }
         }
 
-        if (config.channels["default"] == null)
-            return LOGGER.error { "You must configure a channel with the name 'default'." }
+        val defaultChannel = config.channels["default"]
+            ?: return LOGGER.error { "Start up halted: You must configure a channel with the name 'default'." }
+
+        DForBlock.defaultChannel = defaultChannel
 
         botScope.launch { start() }
         isEnabled = true
@@ -144,10 +149,8 @@ object DForBlock {
     }
 
     fun handleBlockyMessage(payload: BlockyMessagePayload) {
-        if (!isReady) {
-            LOGGER.warn { "Attempted to handle message before discord is ready, ignoring..." }
-            return
-        }
+        if (!isReady)
+            return LOGGER.warn { "Attempted to handle message before discord is ready, ignoring..." }
 
         val channel = config.channels[payload.channelName]
             ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
@@ -159,121 +162,76 @@ object DForBlock {
 
     }
 
-    fun handleServerStarted() {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
+    fun handleServerStarted() = sendDiscordMessage(
+        config.formats.serverStartMessage,
+        Snowflake(defaultChannel.channelId),
+        botScope,
+        kord
+    )
 
-        val channelId = channel.channelId
+    fun handleServerStopped() = sendDiscordMessage(
+        config.formats.serverStopMessage,
+        Snowflake(defaultChannel.channelId),
+        botScope,
+        kord
+    )
 
-        sendDiscordMessage(
-            config.formats.serverStartMessage,
-            Snowflake(channelId),
-            botScope,
-            kord
-        )
-    }
+    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) = sendDiscordMessage(
+        config.formats.playerJoinMessage
+            .replace("{player}", payload.playerName)
+            .replace("{prefix}", payload.prefix)
+            .replace("{suffix}", payload.suffix),
+        Snowflake(defaultChannel.channelId),
+        botScope,
+        kord
+    )
 
-    fun handleServerStopped() {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
+    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) = sendDiscordMessage(
+        config.formats.playerLeaveMessage
+            .replace("{player}", payload.playerName)
+            .replace("{prefix}", payload.prefix)
+            .replace("{suffix}", payload.suffix),
+        Snowflake(defaultChannel.channelId),
+        botScope,
+        kord
+    )
 
-        val channelId = channel.channelId
-
-
-        sendDiscordMessage(
-            config.formats.serverStopMessage,
-            Snowflake(channelId),
-            botScope,
-            kord
-        )
-
-    }
-
-    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
-
-        val channelId = channel.channelId
-
-        sendDiscordMessage(
-            config.formats.playerJoinMessage
-                .replace("{player}", payload.playerName)
-                .replace("{prefix}", payload.prefix)
-                .replace("{suffix}", payload.suffix),
-            Snowflake(channelId),
-            botScope,
-            kord
-        )
-    }
-
-    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
-
-        val channelId = channel.channelId
-
-        sendDiscordMessage(
-            config.formats.playerLeaveMessage
-                .replace("{player}", payload.playerName)
-                .replace("{prefix}", payload.prefix)
-                .replace("{suffix}", payload.suffix),
-            Snowflake(channelId),
-            botScope,
-            kord
-        )
-    }
-
-    fun handlePlayerDeath(payload: PlayerDeathPayload) {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
-
-        val channelId = channel.channelId
-
+    fun handlePlayerDeath(payload: PlayerDeathPayload) = botScope.launch {
         val processedContent = config.formats.playerDeathMessage
             .replace("{player}", payload.playerName)
             .replace("{prefix}", payload.prefix)
             .replace("{suffix}", payload.suffix)
             .replace("{deathMessage}", payload.deathMessage)
-
-        botScope.launch {
-            try {
-                kord.rest.channel.createMessage(Snowflake(channelId)) {
-                    flags = MessageFlags(MessageFlag.IsComponentsV2)
-                    container {
-                        accentColor = Color(Random.nextInt(0..0xFFFFFF))
-                        textDisplay(processedContent)
-                    }
+        try {
+            kord.rest.channel.createMessage(Snowflake(defaultChannel.channelId)) {
+                flags = MessageFlags(MessageFlag.IsComponentsV2)
+                container {
+                    accentColor = Color(Random.nextInt(0..0xFFFFFF))
+                    textDisplay(processedContent)
                 }
-            } catch (e: Exception) {
-                LOGGER.warn { "Failed to send death message: ${e.stackTraceToString()}" }
             }
+        } catch (e: Exception) {
+            LOGGER.warn { "Failed to send death message: ${e.stackTraceToString()}" }
         }
     }
 
-    fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) {
-        val channel = config.channels["default"]
-            ?: return LOGGER.error { "Couldn't find default channel, how did we reach this point?" }
-
-        val channelId = channel.channelId
+    fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) = botScope.launch {
         val processedContent = config.formats.mcAdvancementMadeMessage
             .replace("{player}", payload.playerName)
             .replace("{prefix}", payload.prefix)
             .replace("{suffix}", payload.suffix)
             .replace("{name}", payload.advancementName)
             .replace("{description}", payload.advancementDescription)
-
-        botScope.launch {
-            try {
-                kord.rest.channel.createMessage(Snowflake(channelId)) {
-                    flags = MessageFlags(MessageFlag.IsComponentsV2)
-                    container {
-                        accentColor = Color(Random.nextInt(0..0xFFFFFF))
-                        textDisplay(processedContent)
-                    }
+        try {
+            kord.rest.channel.createMessage(Snowflake(defaultChannel.channelId)) {
+                flags = MessageFlags(MessageFlag.IsComponentsV2)
+                container {
+                    accentColor = Color(Random.nextInt(0..0xFFFFFF))
+                    textDisplay(processedContent)
                 }
-            } catch (e: Exception) {
-                LOGGER.warn { "Failed to send advancement message: ${e.stackTraceToString()}" }
             }
+        } catch (e: Exception) {
+            LOGGER.warn { "Failed to send advancement message: ${e.stackTraceToString()}" }
         }
     }
 }
