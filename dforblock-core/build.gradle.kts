@@ -16,7 +16,6 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.slf4j.simple)
     implementation(libs.kord.core)
     implementation(libs.json5)
     compileOnly(libs.adventure.api)
