@@ -29,6 +29,7 @@ data class FormatsConfig(
     val serverStartMessage: String,
     val serverStopMessage: String,
     val discordChatFormat: String,
+    val discordWebhookChatFormat: String,
     val defaultChannelTopic: String,
 )
 

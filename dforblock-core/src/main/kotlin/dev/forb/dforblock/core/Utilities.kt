@@ -63,27 +63,26 @@ fun createWebhookMessage(
     scope.launch {
         try {
             kord.rest.webhook.executeWebhook(webhookId, channel.webhookToken) {
-                content = config.formats.discordChatFormat
+                content = config.formats.discordWebhookChatFormat
                     .replace("{player}", payload.player)
                     .replace("{content}", payload.messageContent)
                     .replace("{prefix}", payload.prefix)
                     .replace("{suffix}", payload.suffix)
                 username = payload.player
-                payload.skinHint?.let { skinHint ->
-                    avatarUrl = when (skinHint) {
+                if (payload.skinHint != null)
+                    avatarUrl = when (payload.skinHint) {
                         is SkinHint.Minecraft -> {
                             config.minecraftAvatarProviderUrl
-                                .replace("{username}", skinHint.username)
-                                .replace("{uuid}", skinHint.uuid.toString())
+                                .replace("{username}", payload.skinHint.username)
+                                .replace("{uuid}", payload.skinHint.uuid.toString())
                         }
 
                         is SkinHint.Hytale -> {
                             config.hytaleAvatarProviderUrl
-                                .replace("{username}", skinHint.username)
-                                .replace("{id}", skinHint.id)
+                                .replace("{username}", payload.skinHint.username)
+                                .replace("{id}", payload.skinHint.id)
                         }
                     }
-                }
             }
         } catch (e: Exception) {
             logger.warning { "Could not create webhook message: ${e.message}" }

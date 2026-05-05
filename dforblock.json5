@@ -45,12 +45,12 @@
     serverStopMessage: "Server Stopped.",
     // The format to be used when creating a discord message
     // Variables:
-    //  Shared:
     //   author: the name of the author
     //   content: the message content
     //   prefix: luckperms prefix
     //   suffix: luckperms suffix
     discordChatFormat: "{prefix}{player}{suffix}» {content}",
+    discordWebhookChatFormat: "{content}",
     // The default channel's topic to be updated every 5 minutes
     defaultChannelTopic: "{nPlayers}/{maxPlayers} Players. Running at {tps}t/s | {mspt}ms.",
   },
