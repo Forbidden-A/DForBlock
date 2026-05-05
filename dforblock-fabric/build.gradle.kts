@@ -9,7 +9,7 @@ plugins {
     id("maven-publish")
 }
 
-version = rootProject.property("version") ?: "Unknown"
+version = rootProject.version as String
 group = "dev.forb"
 base.archivesName = project.property("archives_base_name") as String
 

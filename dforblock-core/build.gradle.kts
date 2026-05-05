@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.forb.dforblock"
-version = "0.0.1"
+version = rootProject.version as String
 
 repositories {
     mavenCentral()
