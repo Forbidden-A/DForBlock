@@ -10,6 +10,7 @@ data class DForBlockConfig(
     val discordToken: String,
     val useDefaultChannelTopic: Boolean,
     val useRichPresence: Boolean,
+    val useStateOnly: Boolean,
     val richPresenceType: Int,
     val discordStatus: Int,
     val discordStreamUrl: String = "https://minecraft.net",
@@ -33,7 +34,8 @@ data class FormatsConfig(
     val discordChatFormat: String,
     val discordWebhookChatFormat: String,
     val defaultChannelTopic: String,
-    val discordPresenceText: String
+    val discordPresenceText: String,
+    val discordStateText: String,
 )
 
 @Serializable

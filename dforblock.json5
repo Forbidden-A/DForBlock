@@ -4,7 +4,8 @@
   // Whether or not to update the default channel's topic every 5 minutes
   useDefaultChannelTopic: true,
   // Whether or not to use discord rich presence
-  useRichPresence: true,
+  useRichPresence: false,
+  useStateOnly: true,
   // 0: Playing
   // 1: Listening
   // 2: Watching
@@ -70,8 +71,9 @@
     //   tps: the current server ticks per second
     //   targetTps: the current normal ticks per second
     //   mspt: the current server milliseconds per tick
-    defaultChannelTopic: "{onlinePlayers}/{playerLimit} Players. Running at ({tps}/{targetTps})t/s | {mspt}ms.",
-    discordPresenceText: "{onlinePlayers} players! Having so much!"
+    defaultChannelTopic: "{onlinePlayers}/{playerLimit} players; running at ({tps}/{targetTps})t/s | {mspt}ms.",
+    discordPresenceText: "{onlinePlayers} players having so much!",
+    discordStateText: "Watching {onlinePlayers}/{playerLimit} players"
   },
   // Example channel configuration (the default channel is required)
   channels: {

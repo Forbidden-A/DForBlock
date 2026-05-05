@@ -80,6 +80,9 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         if (config.discordStatus !in 0..3)
             return LOGGER.error { "Start up halted: Discord status must be between 0 and 3." }
 
+        if (config.useStateOnly && config.useRichPresence)
+            return LOGGER.error { "Start up halted: Configuration conflict; both useStateOnly and useRichPresence are true." }
+
         this.defaultChannel = defaultChannel
         botScope.launch { login() }
         isInitialised = true

@@ -5,7 +5,6 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
-import io.ktor.client.utils.EmptyContent.status
 import kotlinx.coroutines.*
 import kotlin.time.Duration.Companion.minutes
 
@@ -77,13 +76,15 @@ class DForBlockTaskScheduler(
                 kord.editPresence {
                     this.status = status
                     this.since = since
-                    when (config.richPresenceType) {
-                        0 -> playing(presenceText)
-                        1 -> listening(presenceText)
-                        2 -> watching(presenceText)
-                        3 -> competing(presenceText)
-                        4 -> streaming(presenceText, config.discordStreamUrl)
-                    }
+                    if (config.useRichPresence)
+                        when (config.richPresenceType) {
+                            0 -> playing(presenceText)
+                            1 -> listening(presenceText)
+                            2 -> watching(presenceText)
+                            3 -> competing(presenceText)
+                            4 -> streaming(presenceText, config.discordStreamUrl)
+                        }
+                    this.state = replaceStatistics(statistics, config.formats.discordStateText)
                 }
             } catch (e: Exception) {
                 LOGGER.error { "Could not update presence text: ${e.stackTraceToString()}" }
@@ -98,7 +99,7 @@ class DForBlockTaskScheduler(
             LOGGER.info { "Started update channel job." }
         }
 
-        if (config.useRichPresence) {
+        if (config.useRichPresence || config.useStateOnly) {
             updatePresenceJob = schedulerScope.launch(block = updatePresenceBlock)
             LOGGER.info { "Started update presence job." }
         }
