@@ -19,6 +19,7 @@ import dev.kord.rest.builder.message.container
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -40,11 +41,16 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     private val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    private val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]))
+
     private lateinit var kord: Kord
 
     private lateinit var config: DForBlockConfig
 
     private lateinit var defaultChannel: ChannelConfig
+    
+    lateinit var taskScheduler: DForBlockTaskScheduler
+        private set
 
     var isInitialised: Boolean = false
         private set
@@ -69,10 +75,26 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             ?: return LOGGER.error { "Start up halted: You must configure a channel with the name 'default'." }
 
         this.defaultChannel = defaultChannel
-
         botScope.launch { login() }
         isInitialised = true
         LOGGER.info { "Initialisation complete.."}
+    }
+
+    @OptIn(PrivilegedIntent::class)
+    private suspend fun login() {
+        LOGGER.info { "Initialising DForBlock..." }
+        setup()
+        this.taskScheduler = DForBlockTaskScheduler(
+            schedulerScope = this.taskScope,
+            config = this.config,
+            defaultChannel = this.defaultChannel,
+            kord = this.kord,
+            communicator = this.communicator
+        )
+        LOGGER.info { "Logging in..." }
+        kord.login {
+            intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
+        }
     }
 
     private suspend fun setup() {
@@ -83,6 +105,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         kord.on<ReadyEvent> {
             isReady = true
             LOGGER.info { "DForBlock is now ready." }
+            taskScheduler.start()
             handleServerStarted()
         }
 
@@ -116,15 +139,6 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
     }
 
-    @OptIn(PrivilegedIntent::class)
-    private suspend fun login() {
-        LOGGER.info { "Initialising DForBlock..." }
-        setup()
-        LOGGER.info { "Logging in..." }
-        kord.login {
-            intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
-        }
-    }
 
     private suspend fun logout() {
         LOGGER.info { "Logging out..." }
@@ -136,8 +150,8 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     fun disable() {
         if (!isInitialised)
             return LOGGER.info { "Instance is not initialised, nothing to do.." }
-
         LOGGER.info { "Termination requested..." }
+        taskScheduler.stop()
         handleServerStopped()
         botScope.launch { logout() }
         isInitialised = false
@@ -158,41 +172,64 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     }
 
-    fun handleServerStarted() = sendDiscordMessage(
-        config.formats.serverStartMessage,
-        Snowflake(defaultChannel.channelId),
-        botScope,
-        kord
-    )
+    fun handleServerStarted() {
+        if (!isReady)
+            return LOGGER.warn { "Attempted to send startup message before discord is ready.. message will not be sent." }
 
-    fun handleServerStopped() = sendDiscordMessage(
-        config.formats.serverStopMessage,
-        Snowflake(defaultChannel.channelId),
-        botScope,
-        kord
-    )
+        sendDiscordMessage(
+            config.formats.serverStartMessage,
+            Snowflake(defaultChannel.channelId),
+            botScope,
+            kord
+        )
+    }
 
-    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) = sendDiscordMessage(
-        config.formats.playerJoinMessage
-            .replace("{player}", payload.playerName)
-            .replace("{prefix}", payload.prefix)
-            .replace("{suffix}", payload.suffix),
-        Snowflake(defaultChannel.channelId),
-        botScope,
-        kord
-    )
+    fun handleServerStopped() {
+        if (!isReady)
+            return LOGGER.warn { "Discord disconnected before sending stopped message.. message will not be sent." }
 
-    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) = sendDiscordMessage(
-        config.formats.playerLeaveMessage
-            .replace("{player}", payload.playerName)
-            .replace("{prefix}", payload.prefix)
-            .replace("{suffix}", payload.suffix),
-        Snowflake(defaultChannel.channelId),
-        botScope,
-        kord
-    )
+        sendDiscordMessage(
+            config.formats.serverStopMessage,
+            Snowflake(defaultChannel.channelId),
+            botScope,
+            kord
+        )
+    }
+
+    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
+        if (!isReady)
+            return LOGGER.warn { "Attempted to send player join message while discord is not ready... message will not be sent." }
+
+        sendDiscordMessage(
+            config.formats.playerJoinMessage
+                .replace("{player}", payload.playerName)
+                .replace("{prefix}", payload.prefix)
+                .replace("{suffix}", payload.suffix),
+            Snowflake(defaultChannel.channelId),
+            botScope,
+            kord
+        )
+    }
+
+    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
+        if (!isReady)
+            return LOGGER.warn { "Attempted to send player leave message while discord is not ready... message will not be sent." }
+
+        sendDiscordMessage(
+            config.formats.playerLeaveMessage
+                .replace("{player}", payload.playerName)
+                .replace("{prefix}", payload.prefix)
+                .replace("{suffix}", payload.suffix),
+            Snowflake(defaultChannel.channelId),
+            botScope,
+            kord
+        )
+    }
 
     fun handlePlayerDeath(payload: PlayerDeathPayload) = botScope.launch {
+        if (!isReady)
+            return@launch LOGGER.warn { "Attempted to send player death message while discord is not ready... message will not be sent." }
+
         val processedContent = config.formats.playerDeathMessage
             .replace("{player}", payload.playerName)
             .replace("{prefix}", payload.prefix)
@@ -212,6 +249,9 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     }
 
     fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) = botScope.launch {
+        if (!isReady)
+            return@launch LOGGER.warn { "Attempted to send player advancement message while discord is not ready... message will not be sent." }
+
         val processedContent = config.formats.mcAdvancementMadeMessage
             .replace("{player}", payload.playerName)
             .replace("{prefix}", payload.prefix)
