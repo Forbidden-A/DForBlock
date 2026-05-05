@@ -9,6 +9,10 @@ import java.io.File
 data class DForBlockConfig(
     val discordToken: String,
     val useDefaultChannelTopic: Boolean,
+    val useRichPresence: Boolean,
+    val richPresenceType: Int,
+    val discordStatus: Int,
+    val discordStreamUrl: String = "https://minecraft.net",
     val minecraftAvatarProviderUrl: String = "https://api.mineatar.io/head/{uuid}?size=16",
     val hytaleAvatarProviderUrl: String = "https://hyvatar.io/render/{username}?size=16&rotate=22",
     val formats: FormatsConfig,
@@ -29,6 +33,7 @@ data class FormatsConfig(
     val discordChatFormat: String,
     val discordWebhookChatFormat: String,
     val defaultChannelTopic: String,
+    val discordPresenceText: String
 )
 
 @Serializable

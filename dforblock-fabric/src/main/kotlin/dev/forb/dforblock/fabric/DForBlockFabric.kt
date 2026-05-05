@@ -58,7 +58,7 @@ class DForBlockFabric : ModInitializer {
 
         ServerMessageEvents.CHAT_MESSAGE.register { message, player, bound ->
             val content = message.unsignedContent()?.string ?: message.signedContent()
-            var payload = BlockyMessagePayload(
+            var payload = MinecraftMessageData(
                 player = player.displayName.string,
                 messageContent = content,
                 channelName = "default",
@@ -74,7 +74,7 @@ class DForBlockFabric : ModInitializer {
         }
 
         ServerPlayerEvents.JOIN.register { player ->
-            var payload = PlayerJoinLeavePayload(player.displayName.string)
+            var payload = PlayerJoinLeaveData(player.displayName.string)
             if (isLuckperms) {
                 payload = payload.copy(
                     prefix = luckpermsPrefixByUUID(player.uuid),
@@ -85,7 +85,7 @@ class DForBlockFabric : ModInitializer {
         }
 
         ServerPlayerEvents.LEAVE.register { player ->
-            var payload = PlayerJoinLeavePayload(
+            var payload = PlayerJoinLeaveData(
                 player.displayName.string
             )
             if (isLuckperms) {
@@ -101,7 +101,7 @@ class DForBlockFabric : ModInitializer {
             if (entity !is ServerPlayer)
                 return@register
 
-            var payload = PlayerDeathPayload(
+            var payload = PlayerDeathData(
                 playerName = entity.displayName.string,
                 deathMessage = source.getLocalizedDeathMessage(entity).string,
             )

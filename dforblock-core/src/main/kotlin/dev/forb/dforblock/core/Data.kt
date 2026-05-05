@@ -1,6 +1,6 @@
 package dev.forb.dforblock.core
 
-data class BlockyMessagePayload(
+data class MinecraftMessageData(
     val player: String,
     val messageContent: String,
     val channelName: String = "default",
@@ -9,7 +9,7 @@ data class BlockyMessagePayload(
     val suffix: String = ""
 )
 
-data class DiscordMessagePayload(
+data class DiscordMessageData(
     val author: String,
     val content: String,
     val channelId: ULong,
@@ -17,14 +17,14 @@ data class DiscordMessagePayload(
     val role: String = "Discord"
 )
 
-data class PlayerJoinLeavePayload(
+data class PlayerJoinLeaveData(
     val playerName: String,
     val skinHint: SkinHint? = null,
     val prefix: String = "",
     val suffix: String = ""
 )
 
-data class PlayerDeathPayload(
+data class PlayerDeathData(
     val playerName: String,
     val skinHint: SkinHint? = null,
     val deathMessage: String,
@@ -32,7 +32,7 @@ data class PlayerDeathPayload(
     val suffix: String = "",
 )
 
-data class MCAdvancementMadePayload(
+data class MCAdvancementMadeData(
     val playerName: String,
     val skinHint: SkinHint.Minecraft? = null,
     val advancementName: String,

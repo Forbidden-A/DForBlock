@@ -3,6 +3,20 @@
   discordToken: "<DISCORD_TOKEN>",
   // Whether or not to update the default channel's topic every 5 minutes
   useDefaultChannelTopic: true,
+  // Whether or not to use discord rich presence
+  useRichPresence: true,
+  // 0: Playing
+  // 1: Listening
+  // 2: Watching
+  // 3: Competing
+  // 4: Streaming (must include url valid url)
+  richPresenceType: 4,
+  // 0: Online
+  // 1: Idle
+  // 2: Do not disturb
+  // 3: Invisible
+  discordStatus: 0,
+  discordStreamUrl: "https://google,com",
   // The url used to get the webhook avatar for minecraft players
   // Variables:
   //   username: the username of the player
@@ -49,8 +63,15 @@
     //   suffix: luckperms suffix
     discordChatFormat: "{prefix}{player}{suffix}» {content}",
     discordWebhookChatFormat: "{content}",
-    // The default channel's topic to be updated every 5 minutes
+    // The default channel's topic and bot presence to be updated every 5 minutes
+    // Variables:
+    //   onlinePlayers: the number of online players
+    //   playerLimit: the maximum number of players
+    //   tps: the current server ticks per second
+    //   targetTps: the current normal ticks per second
+    //   mspt: the current server milliseconds per tick
     defaultChannelTopic: "{onlinePlayers}/{playerLimit} Players. Running at ({tps}/{targetTps})t/s | {mspt}ms.",
+    discordPresenceText: "{onlinePlayers} players! Having so much!"
   },
   // Example channel configuration (the default channel is required)
   channels: {

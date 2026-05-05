@@ -74,6 +74,12 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         val defaultChannel = config.channels["default"]
             ?: return LOGGER.error { "Start up halted: You must configure a channel with the name 'default'." }
 
+        if (config.richPresenceType !in 0..4)
+            return LOGGER.error { "Start up halted: rich presence must be between 0 and 2." }
+
+        if (config.discordStatus !in 0..3)
+            return LOGGER.error { "Start up halted: Discord status must be between 0 and 3." }
+
         this.defaultChannel = defaultChannel
         botScope.launch { login() }
         isInitialised = true
@@ -82,7 +88,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     @OptIn(PrivilegedIntent::class)
     private suspend fun login() {
-        LOGGER.info { "Initialising DForBlock..." }
+        LOGGER.info { "Setting up DForBlock..." }
         setup()
         this.taskScheduler = DForBlockTaskScheduler(
             schedulerScope = this.taskScope,
@@ -125,7 +131,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
             val member = message.getAuthorAsMemberOrNull() ?: message.author
             val name = member?.effectiveName ?: "Unknown"
-            val payload = DiscordMessagePayload(
+            val payload = DiscordMessageData(
                 author = name,
                 content = message.content,
                 channelId = message.channelId.value,
@@ -158,7 +164,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         LOGGER.info { "DForBlock disabled." }
     }
 
-    fun handleBlockyMessage(payload: BlockyMessagePayload) {
+    fun handleBlockyMessage(payload: MinecraftMessageData) {
         if (!isReady)
             return LOGGER.warn { "Attempted to handle message before discord is ready, ignoring..." }
 
@@ -196,7 +202,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         )
     }
 
-    fun handlePlayerJoined(payload: PlayerJoinLeavePayload) {
+    fun handlePlayerJoined(payload: PlayerJoinLeaveData) {
         if (!isReady)
             return LOGGER.warn { "Attempted to send player join message while discord is not ready... message will not be sent." }
 
@@ -211,7 +217,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         )
     }
 
-    fun handlePlayerLeave(payload: PlayerJoinLeavePayload) {
+    fun handlePlayerLeave(payload: PlayerJoinLeaveData) {
         if (!isReady)
             return LOGGER.warn { "Attempted to send player leave message while discord is not ready... message will not be sent." }
 
@@ -226,7 +232,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         )
     }
 
-    fun handlePlayerDeath(payload: PlayerDeathPayload) = botScope.launch {
+    fun handlePlayerDeath(payload: PlayerDeathData) = botScope.launch {
         if (!isReady)
             return@launch LOGGER.warn { "Attempted to send player death message while discord is not ready... message will not be sent." }
 
@@ -248,7 +254,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
     }
 
-    fun handleMCAdvancementMade(payload: MCAdvancementMadePayload) = botScope.launch {
+    fun handleMCAdvancementMade(payload: MCAdvancementMadeData) = botScope.launch {
         if (!isReady)
             return@launch LOGGER.warn { "Attempted to send player advancement message while discord is not ready... message will not be sent." }
 

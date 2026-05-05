@@ -8,7 +8,7 @@ interface IBlockyCommunicator {
 
     fun ensureConfigFile(): Boolean
 
-    fun broadcastMessage(payload: DiscordMessagePayload, config: DForBlockConfig)
+    fun broadcastMessage(payload: DiscordMessageData, config: DForBlockConfig)
 
     fun onlinePlayers(): Set<String>
 

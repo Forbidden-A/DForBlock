@@ -31,7 +31,7 @@ open class PlayerAdvancementTrackerMixin {
         if (displayOptional.isEmpty) return
         val displayInfo = displayOptional.get()
 
-        var payload = MCAdvancementMadePayload(
+        var payload = MCAdvancementMadeData(
             playerName = player.displayName.string,
             advancementName = displayInfo.title.string,
             advancementDescription = displayInfo.description.string,

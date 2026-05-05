@@ -11,7 +11,7 @@ fun DForBlockConfig.findChannelById(id: ULong): Pair<String, ChannelConfig>? = c
     it.value.channelId == id
 }?.toPair()
 
-fun prepareMinecraftMiniMessage(payload: DiscordMessagePayload, config: DForBlockConfig): Component {
+fun prepareMinecraftMiniMessage(payload: DiscordMessageData, config: DForBlockConfig): Component {
     val channelEntry = config.findChannelById(payload.channelId)
     val channelName = channelEntry?.first ?: ""
 
@@ -30,7 +30,7 @@ fun createMessage(
     channel: ChannelConfig,
     scope: CoroutineScope,
     kord: Kord,
-    payload: BlockyMessagePayload
+    payload: MinecraftMessageData
 ) {
     sendDiscordMessage(
         config.formats.discordChatFormat
@@ -49,7 +49,7 @@ fun createWebhookMessage(
     channel: ChannelConfig,
     scope: CoroutineScope,
     kord: Kord,
-    payload: BlockyMessagePayload
+    payload: MinecraftMessageData
 ) {
     if (channel.webhookId == null || channel.webhookToken == null) {
         return LOGGER.error {

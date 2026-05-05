@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
+import kotlin.time.Clock
 
 class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
 
@@ -32,7 +33,7 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
     }
 
     override fun broadcastMessage(
-        payload: DiscordMessagePayload,
+        payload: DiscordMessageData,
         config: DForBlockConfig
     ) {
         val kyoriComponent = prepareMinecraftMiniMessage(payload, config)
@@ -46,7 +47,7 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
 
     override fun serverStatistics(): BlockyStatistics {
         val minecraftServer = mod.minecraftServer
-            ?: return BlockyStatistics.MinecraftStatistics(0.0, 0.0, 0.0, 0, 0).apply {
+            ?: return BlockyStatistics.MinecraftStatistics(0.0, 0.0, 0.0, 0, 0, Clock.System.now()).apply {
                 LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
             }
 
@@ -66,7 +67,8 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
             tps = tps,
             mspt = mspt,
             onlinePlayers = minecraftServer.playerCount,
-            playerLimit = minecraftServer.maxPlayers
+            playerLimit = minecraftServer.maxPlayers,
+            startup = Clock.System.now(),
         )
     }
 }
