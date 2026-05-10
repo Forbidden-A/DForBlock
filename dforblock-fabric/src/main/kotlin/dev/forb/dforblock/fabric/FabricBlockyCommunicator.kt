@@ -42,7 +42,7 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
     }
 
     override fun onlinePlayers(): Set<String> =
-        mod.minecraftServer?.playerList?.players?.map { it.displayName.toString() }?.toSet()
+        mod.minecraftServer?.playerList?.players?.map { it.displayName.string }?.toSet()
             ?: emptySet<String>().apply { LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
 
     override fun serverStatistics(): BlockyStatistics {
