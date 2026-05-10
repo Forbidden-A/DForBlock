@@ -1,6 +1,7 @@
 package dev.forb.dforblock.core
 
 import dev.kord.common.Color
+import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.MessageFlag
 import dev.kord.common.entity.MessageFlags
 import dev.kord.common.entity.Snowflake
@@ -17,6 +18,7 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
+import dev.kord.rest.builder.component.actionRow
 import dev.kord.rest.builder.message.container
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
@@ -102,6 +104,20 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         kord.login {
             intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
         }
+    }
+
+    suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
+        kord.createGuildChatInputCommand(
+            name = "playerlist",
+            description = "Get the list of online players",
+            guildId = Snowflake(guildId)
+        )
+
+        kord.createGuildChatInputCommand(
+            name = "panel",
+            description = "Send the control panel",
+            guildId = Snowflake(guildId)
+        )
     }
 
     private suspend fun setup() {
@@ -261,13 +277,6 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
     }
 
-    suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
-        kord.createGuildChatInputCommand(
-            name = "playerlist",
-            description = "Get the list of online players",
-            guildId = Snowflake(guildId)
-        )
-    }
 
     suspend fun MessageCreateEvent.handleMessageCreation(config: DForBlockConfig) {
         if (message.author?.isBot ?: true)
@@ -296,12 +305,24 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun GuildChatInputCommandInteractionCreateEvent.handleChatInputCommandInteraction(config: DForBlockConfig) {
         when (interaction.invokedCommandName) {
-            "playerlist" -> handlePlayerListCommand()
+            "playerlist" -> handlePlayerListCommand(config)
+            "panel" -> sendNewPanel(config)
         }
     }
 
-    suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand() {
+    suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand(config: DForBlockConfig) {
         val response = interaction.deferEphemeralResponse()
+        val permissions = config.permissions.playerlist
+        if (permissions != null && !permissions.allowAll &&
+            interaction.user.id.value !in permissions.users &&
+            interaction.user.roleIds.none { it.value in permissions.roles }
+        ) {
+            response.respond {
+                content = "**You do not have permission to use this command!**"
+            }
+            return
+        }
+
         val onlinePlayerlist = communicator.onlinePlayers()
         val statistics = communicator.serverStatistics()
         val body = if (onlinePlayerlist.isEmpty()) "**Server is empty.**" else onlinePlayerlist.joinToString(
@@ -316,6 +337,46 @@ class DForBlock(val communicator: IBlockyCommunicator) {
                 accentColor = Color(Random.nextInt(0..0xFFFF))
                 textDisplay(body)
             }
+        }
+    }
+
+    suspend fun GuildChatInputCommandInteractionCreateEvent.sendNewPanel(config: DForBlockConfig) {
+        val response = interaction.deferPublicResponse()
+        val permissions = config.permissions.panel
+        if (!permissions.allowAll && interaction.user.id.value !in permissions.users && interaction.user.roleIds.none { it.value in permissions.roles }
+        ) {
+            response.respond {
+                content = "**You do not have permission to use this command!**"
+            }
+            return
+        }
+        try {
+            response.respond {
+                flags = MessageFlags(MessageFlag.IsComponentsV2)
+
+                container {
+                    accentColor = Color(Random.nextInt(0..0xFFFF))
+                    actionRow {
+                        interactionButton(style = ButtonStyle.Primary, customId = "BUTTON_SERVER_STATUS") {
+                            label = "Status"
+                        }
+                        interactionButton(style = ButtonStyle.Primary, customId = "BUTTON_SERVER_PLAYERS") {
+                            label = "Players"
+                        }
+                        interactionButton(style = ButtonStyle.Secondary, customId = "BUTTON_RUN_COMMAND") {
+                            label = "Run Command"
+                        }
+                    }
+                    actionRow {
+                        interactionButton(style = ButtonStyle.Danger, customId = "BUTTON_STOP_SERVER") {
+                            label = "Stop"
+                        }
+                        if (config.panelLink != null) linkButton(url = config.panelLink) { label = "Open Panel" }
+                    }
+                }
+            }
+        } catch (exception: Exception) {
+            LOGGER.error { "Failed to create panel: ${exception.stackTraceToString()}" }
         }
     }
 

@@ -9,6 +9,7 @@ import java.io.File
 data class DForBlockConfig(
     val discordToken: String,
     val guildIds: Set<ULong>,
+    val panelLink: String? = null,
     val useDefaultChannelTopic: Boolean,
     val useRichPresence: Boolean,
     val useStateOnly: Boolean,
@@ -19,6 +20,7 @@ data class DForBlockConfig(
     val hytaleAvatarProviderUrl: String = "https://hyvatar.io/render/{username}?size=16&rotate=22",
     val formats: FormatsConfig,
     val channels: Map<String, ChannelConfig>,
+    val permissions: PermissionsConfig,
 )
 
 
@@ -46,5 +48,11 @@ data class ChannelConfig(
     val webhookId: ULong? = null,
     val webhookToken: String? = null,
 )
+
+@Serializable
+data class PermissionConfig(val allowAll: Boolean = false, val roles: Set<ULong>, val users: Set<ULong>)
+
+@Serializable
+data class PermissionsConfig(val playerlist: PermissionConfig? = null, val panel: PermissionConfig)
 
 fun loadConfig(file: File, json: Json): DForBlockConfig = json.decodeFromJson5String(file.readText(Charsets.UTF_8))

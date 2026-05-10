@@ -1,6 +1,10 @@
 {
   // The token used to log into discord
   discordToken: "<DISCORD_TOKEN>",
+  // The guilds to create commands in (the guild(s) the bot is in)
+  guildIds: [123],
+  // The link to be used for the "open panel" button in the panel, the button will be removed if this is not set.
+  panelLink: "https://panel.potato.whatever",
   // Whether or not to update the default channel's topic every 5 minutes
   useDefaultChannelTopic: true,
   // Whether or not to use discord rich presence
@@ -91,4 +95,20 @@
       channelId: 222222,
     },
   },
+  // Example permissions (some command permissions are required: panel)
+  permissions: {
+    // Example, not required but allowed
+    playerlist: {
+      // default is false, explicit definition is not required
+      allowAll: true,
+      // List of User and Role Ids allowed to use this command. Both lists are required even if empty
+      users: [123, 456],
+      roles: [789]
+    },
+    // Required
+    panel: {
+      users: [],
+      roles: []
+    }
+  }
 }
