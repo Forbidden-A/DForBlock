@@ -120,7 +120,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             handleServerStarted()
         }
 
-        kord.on<GuildChatInputCommandInteractionCreateEvent> { handleMessageCreation(config) }
+        kord.on<GuildChatInputCommandInteractionCreateEvent> { handleChatInputCommandInteraction(config) }
 
         kord.on<MessageCreateEvent> { handleMessageCreation(config) }
 
@@ -294,7 +294,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         communicator.broadcastMessage(payload, config)
     }
 
-    suspend fun GuildChatInputCommandInteractionCreateEvent.handleMessageCreation(config: DForBlockConfig) {
+    suspend fun GuildChatInputCommandInteractionCreateEvent.handleChatInputCommandInteraction(config: DForBlockConfig) {
         when (interaction.invokedCommandName) {
             "playerlist" -> handlePlayerListCommand()
         }
