@@ -8,6 +8,7 @@ import java.io.File
 @Serializable
 data class DForBlockConfig(
     val discordToken: String,
+    val guildIds: Set<ULong>,
     val useDefaultChannelTopic: Boolean,
     val useRichPresence: Boolean,
     val useStateOnly: Boolean,

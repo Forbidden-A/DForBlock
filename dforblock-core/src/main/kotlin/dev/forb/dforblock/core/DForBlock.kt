@@ -6,9 +6,11 @@ import dev.kord.common.entity.MessageFlags
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
+import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.effectiveName
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
+import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
@@ -48,7 +50,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     private lateinit var config: DForBlockConfig
 
     private lateinit var defaultChannel: ChannelConfig
-    
+
     lateinit var taskScheduler: DForBlockTaskScheduler
         private set
 
@@ -86,7 +88,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         this.defaultChannel = defaultChannel
         botScope.launch { login() }
         isInitialised = true
-        LOGGER.info { "Initialisation complete.."}
+        LOGGER.info { "Initialisation complete.." }
     }
 
     @OptIn(PrivilegedIntent::class)
@@ -111,6 +113,10 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             enableShutdownHook = true
         }
 
+        for (guildId in config.guildIds) {
+            createGuildCommands(kord, guildId)
+        }
+
         kord.on<ReadyEvent> {
             isReady = true
             LOGGER.info { "DForBlock is now ready." }
@@ -118,30 +124,9 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             handleServerStarted()
         }
 
-        kord.on<MessageCreateEvent> {
-            if (message.author?.isBot ?: true)
-                return@on
+        kord.on<GuildChatInputCommandInteractionCreateEvent> { handleMessageCreation(config) }
 
-            try {
-                message.getGuildOrNull() ?: return@on
-            } catch (exception: RequestException) {
-                LOGGER.warn { "Unexpected exception while getting guild: ${exception.stackTraceToString()}" }
-                return@on
-            }
-
-            if (message.content.isEmpty())
-                return@on LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" }
-
-            val member = message.getAuthorAsMemberOrNull() ?: message.author
-            val name = member?.effectiveName ?: "Unknown"
-            val payload = DiscordMessageData(
-                author = name,
-                content = message.content,
-                channelId = message.channelId.value,
-                messageID = message.id.value,
-            )
-            communicator.broadcastMessage(payload, config)
-        }
+        kord.on<MessageCreateEvent> { handleMessageCreation(config) }
 
         kord.on<DisconnectEvent> {
             LOGGER.info { "Gateway disconnected." }
@@ -279,4 +264,58 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             LOGGER.warn { "Failed to send advancement message: ${e.stackTraceToString()}" }
         }
     }
+
+    suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
+        kord.createGuildChatInputCommand(
+            name = "playerlist",
+            description = "Get the list of online players",
+            guildId = Snowflake(guildId)
+        )
+    }
+
+    suspend fun MessageCreateEvent.handleMessageCreation(config: DForBlockConfig) {
+        if (message.author?.isBot ?: true)
+            return
+
+        try {
+            message.getGuildOrNull() ?: return
+        } catch (exception: RequestException) {
+            LOGGER.warn { "Unexpected exception while getting guild: ${exception.stackTraceToString()}" }
+            return
+        }
+
+        if (message.content.isEmpty())
+            return LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" }
+
+        val member = message.getAuthorAsMemberOrNull() ?: message.author
+        val name = member?.effectiveName ?: "Unknown"
+        val payload = DiscordMessageData(
+            author = name,
+            content = message.content,
+            channelId = message.channelId.value,
+            messageID = message.id.value,
+        )
+        communicator.broadcastMessage(payload, config)
+    }
+
+    suspend fun GuildChatInputCommandInteractionCreateEvent.handleMessageCreation(config: DForBlockConfig) {
+        when (interaction.invokedCommandName) {
+            "playerlist" -> handlePlayerListCommand()
+        }
+    }
+
+    suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand() {
+        val response = interaction.deferEphemeralResponse()
+        val players = communicator.onlinePlayers()
+        val body = if (players.isEmpty()) "Server is empty" else players.joinToString(separator = ", ", prefix = "*`", postfix = "`*")
+
+        response.respond {
+            flags = MessageFlags(MessageFlag.IsComponentsV2)
+            container {
+                accentColor = Color(Random.nextInt(0..0xFFFF))
+                textDisplay(body)
+            }
+        }
+    }
+
 }
