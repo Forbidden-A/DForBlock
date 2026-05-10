@@ -19,11 +19,7 @@ import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.container
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import kotlin.random.Random
 import kotlin.random.nextInt
@@ -306,8 +302,16 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand() {
         val response = interaction.deferEphemeralResponse()
-        val players = communicator.onlinePlayers()
-        val body = if (players.isEmpty()) "Server is empty" else players.joinToString(separator = ", ", prefix = "*`", postfix = "`*")
+        val onlinePlayerlist = communicator.onlinePlayers()
+        val (onlinePlayers, playerLimit) = when (val statistics = communicator.serverStatistics()) {
+            is BlockyStatistics.MinecraftStatistics -> statistics.onlinePlayers to statistics.playerLimit
+            is BlockyStatistics.HytaleStatistics -> statistics.onlinePlayers to statistics.playerLimit
+        }
+        val body = if (onlinePlayerlist.isEmpty()) "**Server is empty.**" else onlinePlayerlist.joinToString(
+            separator = ", ",
+            prefix = "**Online players ($onlinePlayers/$playerLimit): `",
+            postfix = "`**"
+        )
 
         response.respond {
             flags = MessageFlags(MessageFlag.IsComponentsV2)
