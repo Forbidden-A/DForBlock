@@ -67,15 +67,11 @@ class DForBlockTaskScheduler(
         }
         while (isActive) {
             val statistics = communicator.serverStatistics()
-            val since = when (statistics) {
-                is BlockyStatistics.MinecraftStatistics -> statistics.startup
-                is BlockyStatistics.HytaleStatistics -> statistics.startup
-            }
             val presenceText = replaceStatistics(statistics, config.formats.discordPresenceText)
             try {
                 kord.editPresence {
                     this.status = status
-                    this.since = since
+                    this.since = statistics.startup
                     if (config.useRichPresence)
                         when (config.richPresenceType) {
                             0 -> playing(presenceText)

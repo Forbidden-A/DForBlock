@@ -303,13 +303,10 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand() {
         val response = interaction.deferEphemeralResponse()
         val onlinePlayerlist = communicator.onlinePlayers()
-        val (onlinePlayers, playerLimit) = when (val statistics = communicator.serverStatistics()) {
-            is BlockyStatistics.MinecraftStatistics -> statistics.onlinePlayers to statistics.playerLimit
-            is BlockyStatistics.HytaleStatistics -> statistics.onlinePlayers to statistics.playerLimit
-        }
+        val statistics = communicator.serverStatistics()
         val body = if (onlinePlayerlist.isEmpty()) "**Server is empty.**" else onlinePlayerlist.joinToString(
             separator = ", ",
-            prefix = "**Online players ($onlinePlayers/$playerLimit): `",
+            prefix = "**Online players (${statistics.onlinePlayers}/${statistics.playerLimit}): `",
             postfix = "`**"
         )
 
