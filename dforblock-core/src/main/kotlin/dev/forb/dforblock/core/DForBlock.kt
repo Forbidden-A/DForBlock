@@ -400,6 +400,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
 
         response.respond {
+            flags = MessageFlags(MessageFlag.IsComponentsV2)
             container {
                 accentColor = Color(Random.nextInt(0..0xFFFF))
                 textDisplay("**Stopping Server.. Goodbye.**")
@@ -427,6 +428,22 @@ class DForBlock(val communicator: IBlockyCommunicator) {
                 content = "**You do not have permission to use this button!**"
             }
             return
+        }
+
+        val onlinePlayerlist = communicator.onlinePlayers()
+        val statistics = communicator.serverStatistics()
+        val body = if (onlinePlayerlist.isEmpty()) "**Server is empty.**" else onlinePlayerlist.joinToString(
+            separator = ", ",
+            prefix = "**Online players (${statistics.onlinePlayers}/${statistics.playerLimit}): `",
+            postfix = "`**"
+        )
+
+        response.respond {
+            flags = MessageFlags(MessageFlag.IsComponentsV2)
+            container {
+                accentColor = Color(Random.nextInt(0..0xFFFF))
+                textDisplay(body)
+            }
         }
     }
 
