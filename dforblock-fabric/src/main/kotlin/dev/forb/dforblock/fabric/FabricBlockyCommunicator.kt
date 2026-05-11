@@ -45,15 +45,21 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
         mod.minecraftServer?.playerList?.players?.map { it.displayName.string }?.toSet()
             ?: emptySet<String>().apply { LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
 
-    override fun serverStatistics(): BlockyStatistics {
+    override fun serverStatistics(): GameStatistics {
         val minecraftServer = mod.minecraftServer
-            ?: return BlockyStatistics.MinecraftStatistics(0.0, 0.0, 0.0, 0, 0, Clock.System.now()).apply {
+            ?: return GameStatistics(
+                GameStatistics.GameType.Minecraft, 0, 0, Clock.System.now(),
+                "unknown",
+                .0,
+                .0,
+                .0,
+            ).apply {
                 LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
             }
 
         val tickManager = minecraftServer.tickRateManager()
 
-        val mspt = tickManager.millisecondsPerTick().toDouble()
+        val mspt = minecraftServer.averageTickTimeNanos / 1_000_000.0
         val targetTps = tickManager.tickrate().toDouble()
 
         val tps = if (mspt > 0.0) {
@@ -62,13 +68,15 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
             targetTps
         }
 
-        return BlockyStatistics.MinecraftStatistics(
+        return GameStatistics(
+            gameType = GameStatistics.GameType.Minecraft,
+            onlinePlayers = minecraftServer.playerCount,
+            playerLimit = minecraftServer.maxPlayers,
+            startup = mod.startup,
+            gameVersion = minecraftServer.serverVersion,
             targetTps = targetTps,
             tps = tps,
             mspt = mspt,
-            onlinePlayers = minecraftServer.playerCount,
-            playerLimit = minecraftServer.maxPlayers,
-            startup = Clock.System.now(),
         )
     }
 

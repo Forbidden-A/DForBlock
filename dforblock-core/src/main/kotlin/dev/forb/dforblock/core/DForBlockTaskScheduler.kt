@@ -18,25 +18,13 @@ class DForBlockTaskScheduler(
     private var updateChannelJob: Job? = null
     private var updatePresenceJob: Job? = null
 
-    private fun replaceStatistics(statistics: BlockyStatistics, text: String): String = when (statistics) {
-        is BlockyStatistics.HytaleStatistics -> {
-            text.replace("{game}", "Hytale")
-                .replace("{onlinePlayers}", statistics.onlinePlayers.toString())
-                .replace("{playerLimit}", statistics.playerLimit.toString())
-                .replace("{tps}", 0.0.toString())
-                .replace("{targetTps}", 0.0.toString())
-                .replace("{mspt}", 0.0.toString())
-        }
-        is BlockyStatistics.MinecraftStatistics -> {
-            text.replace("{game}", "Minecraft")
-                .replace("{onlinePlayers}", statistics.onlinePlayers.toString())
-                .replace("{playerLimit}", statistics.playerLimit.toString())
-                .replace("{tps}", statistics.tps.toString())
-                .replace("{targetTps}", statistics.targetTps.toString())
-                .replace("{mspt}", statistics.mspt.toString())
-
-        }
-    }
+    private fun replaceStatistics(statistics: GameStatistics, text: String): String = text
+        .replace("{game}", statistics.gameType.name)
+        .replace("{onlinePlayers}", statistics.onlinePlayers.toString())
+        .replace("{playerLimit}", statistics.playerLimit.toString())
+        .replace("{tps}", "%.2f".format(statistics.tps))
+        .replace("{targetTps}", "%.1f".format(statistics.targetTps))
+        .replace("{mspt}", "%.2f".format(statistics.mspt))
 
     private val updateChannelBlock: suspend CoroutineScope.() -> Unit = {
         while (isActive) {

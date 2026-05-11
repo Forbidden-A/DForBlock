@@ -7,15 +7,27 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 fun DForBlockConfig.findChannelById(id: ULong): Pair<String, ChannelConfig>? = channels.entries.firstOrNull {
     it.value.channelId == id
 }?.toPair()
 
-
 fun PermissionConfig.isAllowed(interaction: GuildInteraction): Boolean = allowAll || interaction.user.id.value in users || interaction.user.roleIds.any { it.value in roles }
 fun PermissionConfig.isProhibited(interaction: GuildInteraction): Boolean = !allowAll && interaction.user.id.value !in users && interaction.user.roleIds.none { it.value in roles }
 fun PermissionConfig.check(interaction: GuildInteraction, reversed: Boolean = false): Boolean =  if (reversed) isProhibited(interaction) else isAllowed(interaction)
+
+val Instant.duration: Duration get() = Clock.System.now() - this
+val Duration.beautify: String get() = this.toComponents { days, hours, minutes, seconds, _ ->
+    buildString {
+        if (days > 0) append("${days}d ")
+        if (hours > 0) append("${hours}h ")
+        if (minutes > 0) append("${minutes}m ")
+        append("${seconds}s")
+    }.trim()
+}
 
 fun prepareMinecraftMiniMessage(payload: DiscordMessageData, config: DForBlockConfig): Component {
     val channelEntry = config.findChannelById(payload.channelId)
