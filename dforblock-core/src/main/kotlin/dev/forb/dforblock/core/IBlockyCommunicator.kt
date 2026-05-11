@@ -15,4 +15,6 @@ interface IBlockyCommunicator {
     fun serverStatistics(): GameStatistics
 
     fun stopServer()
+
+    suspend fun executeCommand(command: String): String
 }

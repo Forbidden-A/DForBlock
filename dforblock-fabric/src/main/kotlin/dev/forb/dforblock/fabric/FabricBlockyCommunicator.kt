@@ -1,8 +1,13 @@
 package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import net.minecraft.commands.CommandSource
+import net.minecraft.network.chat.Component
+import net.minecraft.server.permissions.PermissionSet
 import java.io.File
 import java.nio.file.Files
+import kotlin.coroutines.resume
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.time.Clock
@@ -82,5 +87,42 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
 
     override fun stopServer() {
         mod.minecraftServer?.halt(false) ?: return LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
+    }
+
+    override suspend fun executeCommand(command: String): String {
+        val minecraftServer = mod.minecraftServer ?: return "".apply { LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
+
+        return suspendCancellableCoroutine { continuation ->
+            minecraftServer.execute {
+                val builder = StringBuilder()
+
+                val commandSource = object : CommandSource {
+                    override fun sendSystemMessage(message: Component) {
+                        builder.append(message.string).append("\n")
+                        minecraftServer.sendSystemMessage(message)
+                    }
+                    override fun acceptsSuccess(): Boolean = true
+                    override fun acceptsFailure(): Boolean = true
+                    override fun shouldInformAdmins(): Boolean = true
+                }
+
+                val customSource = minecraftServer.createCommandSourceStack()
+                    .withSource(commandSource)
+                    .withPermission(PermissionSet.ALL_PERMISSIONS)
+
+                try {
+                    minecraftServer.commands.performPrefixedCommand(customSource, command)
+                    val result = builder.toString().trim()
+
+                    if (result.isEmpty()) {
+                        continuation.resume("Command executed successfully (no text output).")
+                    } else {
+                        continuation.resume(result)
+                    }
+                } catch (e: Exception) {
+                    continuation.resume("Internal Error executing command: ${e.message} ${e.stackTraceToString()}")
+                }
+            }
+        }
     }
 }

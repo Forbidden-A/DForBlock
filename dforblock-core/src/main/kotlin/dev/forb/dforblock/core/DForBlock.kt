@@ -4,17 +4,24 @@ import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.MessageFlag
 import dev.kord.common.entity.MessageFlags
+import dev.kord.common.entity.SeparatorSpacingSize
 import dev.kord.common.entity.Snowflake
+import dev.kord.common.entity.TextInputStyle
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
+import dev.kord.core.behavior.interaction.modal
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.effectiveName
 import dev.kord.core.entity.interaction.ActionInteraction
+import dev.kord.core.entity.interaction.ComponentInteraction
 import dev.kord.core.entity.interaction.GuildInteraction
+import dev.kord.core.entity.interaction.GuildModalSubmitInteraction
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.interaction.GuildModalSubmitInteractionCreateEvent
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
@@ -134,7 +141,9 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
         kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand(config) }
 
-        kord.on<GuildButtonInteractionCreateEvent> { handleButtonInteraction(config) }
+        kord.on<GuildButtonInteractionCreateEvent> { onDiscordButtonPress(config) }
+
+        kord.on<GuildModalSubmitInteractionCreateEvent> { onDiscordModalSubmit(config) }
 
         kord.on<MessageCreateEvent> { onDiscordMessageReceive(config) }
 
@@ -186,7 +195,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
     }
 
-    suspend fun GuildButtonInteractionCreateEvent.handleButtonInteraction(config: DForBlockConfig) {
+    suspend fun GuildButtonInteractionCreateEvent.onDiscordButtonPress(config: DForBlockConfig) {
         when (interaction.componentId) {
             "BUTTON_STOP_SERVER" -> {
                 handleStopServerButton(interaction, config)
@@ -204,6 +213,11 @@ class DForBlock(val communicator: IBlockyCommunicator) {
                 handleServerStatusButton(interaction, config)
             }
         }
+    }
+
+    suspend fun GuildModalSubmitInteractionCreateEvent.onDiscordModalSubmit(config: DForBlockConfig) {
+        if (interaction.modalId == "MODAL_RUN_COMMAND")
+            handleCommandRunModalSubmission(interaction)
     }
 
     suspend fun MessageCreateEvent.onDiscordMessageReceive(config: DForBlockConfig) {
@@ -261,6 +275,39 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             }
         }
     }
+
+    suspend fun <I> handleServerStatusButton(
+        interaction: I,
+        config: DForBlockConfig
+    ) where I : ActionInteraction, I : GuildInteraction {
+        val response = interaction.deferEphemeralResponse()
+        val permission = config.permissions.statusButton
+        if (permission != null && permission.check(interaction, reversed = true)) {
+            response.respond {
+                content = "**You do not have permission to use this button!**"
+            }
+            return
+        }
+        val statistics = communicator.serverStatistics()
+        val body = """
+            **Game**: ${statistics.gameType.name} ${statistics.gameVersion}
+            **Players**: ${statistics.onlinePlayers}/${statistics.playerLimit}
+            **Uptime**: ${statistics.startup.duration.beautify}
+            **Running at**: ${"%.2f".format(statistics.mspt)}mspt @ ${"%.2f".format(statistics.tps)}/${
+            "%.1f".format(
+                statistics.targetTps
+            )
+        }tps
+        """.trimIndent()
+        response.respond {
+            flags = MessageFlags(MessageFlag.IsComponentsV2)
+            container {
+                accentColor = Color(Random.nextInt(0..0xFFFF))
+                textDisplay(body)
+            }
+        }
+    }
+
 
     suspend fun <I> sendNewPanel(
         interaction: I,
@@ -330,45 +377,36 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     suspend fun <I> handleRunCommandButton(
         interaction: I,
         config: DForBlockConfig
-    ) where I : ActionInteraction, I : GuildInteraction {
-        val response = interaction.deferEphemeralResponse()
-
+    ) where I : ComponentInteraction, I : GuildInteraction {
         if (config.permissions.runCommandButton.check(interaction, reversed = true)) {
-            response.respond {
+            interaction.respondEphemeral {
                 content = "**You do not have permission to use this button!**"
             }
             return
+        }
+
+        interaction.modal("Run Command", "MODAL_RUN_COMMAND") {
+            label("Command") {
+                textInput(TextInputStyle.Short, "MODAL_INPUT_COMMAND") {
+                    placeholder = "time set day"
+                    required = true
+                    allowedLength = 1..1000
+                }
+            }
         }
     }
 
-    suspend fun <I> handleServerStatusButton(
-        interaction: I,
-        config: DForBlockConfig
-    ) where I : ActionInteraction, I : GuildInteraction {
+    suspend fun handleCommandRunModalSubmission(interaction: GuildModalSubmitInteraction) {
         val response = interaction.deferEphemeralResponse()
-        val permission = config.permissions.statusButton
-        if (permission != null && permission.check(interaction, reversed = true)) {
-            response.respond {
-                content = "**You do not have permission to use this button!**"
-            }
-            return
-        }
-        val statistics = communicator.serverStatistics()
-        val body = """
-            **Game**: ${statistics.gameType.name} ${statistics.gameVersion}
-            **Players**: ${statistics.onlinePlayers}/${statistics.playerLimit}
-            **Uptime**: ${statistics.startup.duration.beautify}
-            **Running at**: ${"%.2f".format(statistics.mspt)}mspt @ ${"%.2f".format(statistics.tps)}/${
-            "%.1f".format(
-                statistics.targetTps
-            )
-        }tps
-        """.trimIndent()
+        val commandContent = interaction.textInputs["MODAL_INPUT_COMMAND"]?.value ?: return
+        val commandResult = communicator.executeCommand(commandContent)
         response.respond {
             flags = MessageFlags(MessageFlag.IsComponentsV2)
             container {
                 accentColor = Color(Random.nextInt(0..0xFFFF))
-                textDisplay(body)
+                textDisplay("**Executed:** ${commandContent.take(50)}")
+                separator(SeparatorSpacingSize.Small)
+                textDisplay("**Result:** ```txt\n${commandResult.take(500)}```")
             }
         }
     }
