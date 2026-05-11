@@ -95,10 +95,10 @@
       channelId: 222222,
     },
   },
-  // Example permissions (some command permissions are required: panel)
+  // Example permissions (some permissions are required: panel command, stop button, run command button)
   permissions: {
     // Example, not required but allowed
-    playerlist: {
+    playerlistCommand: {
       // default is false, explicit definition is not required
       allowAll: true,
       // List of User and Role Ids allowed to use this command. Both lists are required even if empty
@@ -106,7 +106,24 @@
       roles: [789]
     },
     // Required
-    panel: {
+    panelCommand: {
+      users: [],
+      roles: []
+    },
+    stopButton: {
+      users: [],
+      roles: []
+    },
+    runCommandButton: {
+      users: [],
+      roles: []
+    },
+    // Not required
+    playersButton: {
+      users: [],
+      roles: []
+    },
+    statusButton: {
       users: [],
       roles: []
     }

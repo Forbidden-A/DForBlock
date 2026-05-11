@@ -53,6 +53,13 @@ data class ChannelConfig(
 data class PermissionConfig(val allowAll: Boolean = false, val roles: Set<ULong>, val users: Set<ULong>)
 
 @Serializable
-data class PermissionsConfig(val playerlist: PermissionConfig? = null, val panel: PermissionConfig)
+data class PermissionsConfig(
+    val playerlistCommand: PermissionConfig? = null,
+    val panelCommand: PermissionConfig,
+    val stopButton: PermissionConfig,
+    val runCommandButton: PermissionConfig,
+    val playersButton: PermissionConfig? = null,
+    val statusButton: PermissionConfig? = null,
+)
 
 fun loadConfig(file: File, json: Json): DForBlockConfig = json.decodeFromJson5String(file.readText(Charsets.UTF_8))

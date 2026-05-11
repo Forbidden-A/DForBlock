@@ -11,6 +11,7 @@ import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.effectiveName
 import dev.kord.core.event.gateway.DisconnectEvent
 import dev.kord.core.event.gateway.ReadyEvent
+import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
@@ -137,6 +138,8 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
 
         kord.on<GuildChatInputCommandInteractionCreateEvent> { handleChatInputCommandInteraction(config) }
+
+        kord.on<GuildButtonInteractionCreateEvent> { handleButtonInteraction(config) }
 
         kord.on<MessageCreateEvent> { handleMessageCreation(config) }
 
@@ -312,10 +315,8 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun GuildChatInputCommandInteractionCreateEvent.handlePlayerListCommand(config: DForBlockConfig) {
         val response = interaction.deferEphemeralResponse()
-        val permissions = config.permissions.playerlist
-        if (permissions != null && !permissions.allowAll &&
-            interaction.user.id.value !in permissions.users &&
-            interaction.user.roleIds.none { it.value in permissions.roles }
+        val permission = config.permissions.playerlistCommand
+        if (permission != null && permission.check(interaction, reversed = true)
         ) {
             response.respond {
                 content = "**You do not have permission to use this command!**"
@@ -342,14 +343,13 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun GuildChatInputCommandInteractionCreateEvent.sendNewPanel(config: DForBlockConfig) {
         val response = interaction.deferPublicResponse()
-        val permissions = config.permissions.panel
-        if (!permissions.allowAll && interaction.user.id.value !in permissions.users && interaction.user.roleIds.none { it.value in permissions.roles }
-        ) {
+        if (config.permissions.panelCommand.check(interaction, reversed = true)) {
             response.respond {
                 content = "**You do not have permission to use this command!**"
             }
             return
         }
+
         try {
             response.respond {
                 flags = MessageFlags(MessageFlag.IsComponentsV2)
@@ -377,6 +377,67 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             }
         } catch (exception: Exception) {
             LOGGER.error { "Failed to create panel: ${exception.stackTraceToString()}" }
+        }
+    }
+
+    suspend fun GuildButtonInteractionCreateEvent.handleButtonInteraction(config: DForBlockConfig) {
+        when (interaction.componentId) {
+            "BUTTON_STOP_SERVER" -> { handleStopServerButton(config) }
+            "BUTTON_RUN_COMMAND" -> { handleRunCommandButton(config) }
+            "BUTTON_SERVER_PLAYERS" -> { handleServerPlayersButton(config) }
+            "BUTTON_SERVER_STATUS" -> { handleServerStatusButton(config) }
+        }
+    }
+
+    suspend fun GuildButtonInteractionCreateEvent.handleStopServerButton(config: DForBlockConfig) {
+        val response = interaction.deferEphemeralResponse()
+
+        if (config.permissions.stopButton.check(interaction, reversed = true)) {
+            response.respond {
+                content = "**You do not have permission to use this button!**"
+            }
+            return
+        }
+
+        response.respond {
+            container {
+                accentColor = Color(Random.nextInt(0..0xFFFF))
+                textDisplay("**Stopping Server.. Goodbye.**")
+            }
+        }
+        communicator.stopServer()
+    }
+
+    suspend fun GuildButtonInteractionCreateEvent.handleRunCommandButton(config: DForBlockConfig) {
+        val response = interaction.deferEphemeralResponse()
+
+        if (config.permissions.runCommandButton.check(interaction, reversed = true)) {
+            response.respond {
+                content = "**You do not have permission to use this button!**"
+            }
+            return
+        }
+    }
+
+    suspend fun GuildButtonInteractionCreateEvent.handleServerPlayersButton(config: DForBlockConfig) {
+        val response = interaction.deferEphemeralResponse()
+        val permission = config.permissions.playersButton
+        if (permission != null && permission.check(interaction, reversed = true)) {
+            response.respond {
+                content = "**You do not have permission to use this button!**"
+            }
+            return
+        }
+    }
+
+    suspend fun GuildButtonInteractionCreateEvent.handleServerStatusButton(config: DForBlockConfig) {
+        val response = interaction.deferEphemeralResponse()
+        val permission = config.permissions.statusButton
+        if (permission != null && permission.check(interaction, reversed = true)) {
+            response.respond {
+                content = "**You do not have permission to use this button!**"
+            }
+            return
         }
     }
 

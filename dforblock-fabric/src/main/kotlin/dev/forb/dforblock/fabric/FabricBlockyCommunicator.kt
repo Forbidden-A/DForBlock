@@ -71,4 +71,8 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
             startup = Clock.System.now(),
         )
     }
+
+    override fun stopServer() {
+        mod.minecraftServer?.halt(false) ?: return LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
+    }
 }

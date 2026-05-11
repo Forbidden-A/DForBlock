@@ -2,6 +2,7 @@ package dev.forb.dforblock.core
 
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
+import dev.kord.core.entity.interaction.GuildInteraction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
@@ -10,6 +11,11 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 fun DForBlockConfig.findChannelById(id: ULong): Pair<String, ChannelConfig>? = channels.entries.firstOrNull {
     it.value.channelId == id
 }?.toPair()
+
+
+fun PermissionConfig.isAllowed(interaction: GuildInteraction): Boolean = allowAll || interaction.user.id.value in users || interaction.user.roleIds.any { it.value in roles }
+fun PermissionConfig.isProhibited(interaction: GuildInteraction): Boolean = !allowAll && interaction.user.id.value !in users && interaction.user.roleIds.none { it.value in roles }
+fun PermissionConfig.check(interaction: GuildInteraction, reversed: Boolean = false): Boolean =  if (reversed) isProhibited(interaction) else isAllowed(interaction)
 
 fun prepareMinecraftMiniMessage(payload: DiscordMessageData, config: DForBlockConfig): Component {
     val channelEntry = config.findChannelById(payload.channelId)
