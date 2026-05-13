@@ -12,5 +12,9 @@ interface IBlockyCommunicator {
 
     fun onlinePlayers(): Set<String>
 
-    fun serverStatistics(): BlockyStatistics
+    fun serverStatistics(): GameStatistics
+
+    fun stopServer()
+
+    suspend fun executeCommand(command: String): String
 }

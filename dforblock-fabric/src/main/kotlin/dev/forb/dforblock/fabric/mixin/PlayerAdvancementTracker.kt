@@ -45,6 +45,6 @@ open class PlayerAdvancementTrackerMixin {
                 suffix = luckpermsSuffixByUUID(player.uuid),
             )
 
-        DForBlockFabric.INSTANCE.dForBlock.handleMCAdvancementMade(payload)
+        DForBlockFabric.INSTANCE.dForBlock.onMinecraftAdvancement(payload)
     }
 }

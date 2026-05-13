@@ -12,6 +12,8 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import java.nio.file.Path
 import kotlin.io.path.div
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 
 val isLuckperms: Boolean = FabricLoader.getInstance().isModLoaded("luckperms")
@@ -38,13 +40,19 @@ class DForBlockFabric : ModInitializer {
         private set
 
     lateinit var dForBlock: DForBlock
+        private set
     lateinit var communicator: IBlockyCommunicator
+        private set
+
+    lateinit var startup: Instant
+        private set
 
     override fun onInitialize() {
         INSTANCE = this
         ServerLifecycleEvents.SERVER_STARTING.register { server ->
             minecraftServer = server
             adventure = MinecraftServerAudiences.of(server)
+            startup = Clock.System.now()
             communicator = FabricBlockyCommunicator(this)
             dForBlock = DForBlock(communicator)
             dForBlock.start()
@@ -70,7 +78,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            dForBlock.handleBlockyMessage(payload)
+            dForBlock.onBlockyMessageReceive(payload)
         }
 
         ServerPlayerEvents.JOIN.register { player ->
@@ -81,7 +89,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            dForBlock.handlePlayerJoined(payload)
+            dForBlock.onPlayerJoin(payload)
         }
 
         ServerPlayerEvents.LEAVE.register { player ->
@@ -94,7 +102,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(player.uuid)
                 )
             }
-            dForBlock.handlePlayerLeave(payload)
+            dForBlock.onPlayerLeave(payload)
         }
 
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, source ->
@@ -111,7 +119,7 @@ class DForBlockFabric : ModInitializer {
                     suffix = luckpermsSuffixByUUID(entity.uuid)
                 )
             }
-            dForBlock.handlePlayerDeath(payload)
+            dForBlock.onPlayerDeath(payload)
         }
 
     }

@@ -1,5 +1,7 @@
 package dev.forb.dforblock.core
 
+import kotlin.time.Instant
+
 data class MinecraftMessageData(
     val player: String,
     val messageContent: String,
@@ -40,3 +42,18 @@ data class MCAdvancementMadeData(
     val prefix: String = "",
     val suffix: String = ""
 )
+
+data class GameStatistics(
+    val gameType: GameType,
+    val onlinePlayers: Int,
+    val playerLimit: Int,
+    val startup: Instant,
+    val gameVersion: String,
+    val targetTps: Double,
+    val tps: Double,
+    val mspt: Double,
+) {
+    enum class GameType{
+        Minecraft, Hytale
+    }
+}
