@@ -100,6 +100,9 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         if (config.useStateOnly && config.useRichPresence)
             return LOGGER.error { "Start up halted: Configuration conflict; both useStateOnly and useRichPresence are true." }
 
+        if (config.runCommandList.whitelist != null && config.runCommandList.blacklist != null)
+            return LOGGER.error { "Start up halted: Configuration conflict: both runCommandList.whitelist and runCommandList.blacklist are defined." }
+
         this.defaultChannel = defaultChannel
         botScope.launch { login() }
         isInitialised = true
@@ -289,15 +292,13 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             return
         }
         val statistics = communicator.serverStatistics()
+        val mspt = "%.2f".format(statistics.mspt)
+        val tps = "${"%.2f".format(statistics.tps)}/${"%.1f".format(statistics.targetTps)}"
         val body = """
             **Game**: ${statistics.gameType.name} ${statistics.gameVersion}
             **Players**: ${statistics.onlinePlayers}/${statistics.playerLimit}
             **Uptime**: ${statistics.startup.duration.beautify}
-            **Running at**: ${"%.2f".format(statistics.mspt)}mspt @ ${"%.2f".format(statistics.tps)}/${
-            "%.1f".format(
-                statistics.targetTps
-            )
-        }tps
+            **Running at**: ${mspt}mspt @ ${tps}tps
         """.trimIndent()
         response.respond {
             flags = MessageFlags(MessageFlag.IsComponentsV2)
@@ -399,6 +400,18 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     suspend fun handleCommandRunModalSubmission(interaction: GuildModalSubmitInteraction) {
         val response = interaction.deferEphemeralResponse()
         val commandContent = interaction.textInputs["MODAL_INPUT_COMMAND"]?.value ?: return
+        val command = commandContent.split(" ").firstOrNull() ?: return
+        if (config.runCommandList.blacklist?.contains(command) == true || config.runCommandList.whitelist?.contains(command) == false) {
+            response.respond {
+                flags = MessageFlags(MessageFlag.IsComponentsV2)
+                container {
+                    accentColor = Color(Random.nextInt(0..0xFFFF))
+                    textDisplay("**This command is not allowed.**")
+                }
+            }
+            return
+        }
+
         val commandResult = communicator.executeCommand(commandContent)
         response.respond {
             flags = MessageFlags(MessageFlag.IsComponentsV2)

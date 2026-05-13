@@ -21,6 +21,7 @@ data class DForBlockConfig(
     val formats: FormatsConfig,
     val channels: Map<String, ChannelConfig>,
     val permissions: PermissionsConfig,
+    val runCommandList: CommandListConfig
 )
 
 
@@ -51,6 +52,9 @@ data class ChannelConfig(
 
 @Serializable
 data class PermissionConfig(val allowAll: Boolean = false, val roles: Set<ULong>, val users: Set<ULong>)
+
+@Serializable
+data class CommandListConfig(val blacklist: Set<String>? = null, val whitelist: Set<String>? = null)
 
 @Serializable
 data class PermissionsConfig(

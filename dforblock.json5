@@ -127,5 +127,10 @@
       users: [],
       roles: []
     }
+  },
+  runCommandList: {
+    // Can only define one of the following.
+    blacklist: ["op",],
+    whitelist: null,
   }
 }
