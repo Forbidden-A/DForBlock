@@ -44,7 +44,10 @@ tasks.processResources {
     inputs.property("loader_version", project.property("loader_version"))
     filteringCharset = "UTF-8"
 
-    from(rootProject.file("dforblock.json5"))
+    from(rootProject.file("config/core.json5"))
+    from(rootProject.file("config/channels.json5"))
+    from(rootProject.file("config/permissions.json5"))
+    from(rootProject.file("config/messages.json5"))
 
     filesMatching("fabric.mod.json") {
         expand(

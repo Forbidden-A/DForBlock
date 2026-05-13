@@ -35,9 +35,10 @@ open class PlayerAdvancementTrackerMixin {
 
         var payload = MCAdvancementMadeData(
             playerName = player.displayName.string,
+            playerUuid = player.stringUUID,
             advancementName = displayInfo.title.string,
             advancementDescription = displayInfo.description.string,
-            skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
+            skinHint = SkinHint.Minecraft(player.stringUUID, player.name.string)
         )
         if (isLuckperms)
             payload = payload.copy(

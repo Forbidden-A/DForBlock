@@ -1,6 +1,7 @@
 package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.*
+import dev.forb.dforblock.core.config.ConfigManager
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
@@ -17,8 +18,7 @@ import kotlin.time.Instant
 
 
 val isLuckperms: Boolean = FabricLoader.getInstance().isModLoaded("luckperms")
-val configDir: Path = FabricLoader.getInstance().configDir
-val configPath = configDir / "dforblock.json5"
+val configDir: Path = FabricLoader.getInstance().configDir / "dforblock"
 
 class DForBlockFabric : ModInitializer {
 
@@ -44,6 +44,9 @@ class DForBlockFabric : ModInitializer {
     lateinit var communicator: IBlockyCommunicator
         private set
 
+    lateinit var configManager: ConfigManager
+        private set
+
     lateinit var startup: Instant
         private set
 
@@ -54,7 +57,8 @@ class DForBlockFabric : ModInitializer {
             adventure = MinecraftServerAudiences.of(server)
             startup = Clock.System.now()
             communicator = FabricBlockyCommunicator(this)
-            dForBlock = DForBlock(communicator)
+            configManager = ConfigManager(configDir, JSON)
+            dForBlock = DForBlock(configManager, communicator)
             dForBlock.start()
         }
 
@@ -66,11 +70,12 @@ class DForBlockFabric : ModInitializer {
 
         ServerMessageEvents.CHAT_MESSAGE.register { message, player, bound ->
             val content = message.unsignedContent()?.string ?: message.signedContent()
-            var payload = MinecraftMessageData(
-                player = player.displayName.string,
+            var payload = GameMessageData(
+                playerName = player.displayName.string,
+                playerUuid = player.stringUUID,
                 messageContent = content,
                 channelName = "default",
-                skinHint = SkinHint.Minecraft(player.uuid, player.name.string)
+                skinHint = SkinHint.Minecraft(player.stringUUID, player.name.string)
             )
             if (isLuckperms) {
                 payload = payload.copy(
@@ -82,7 +87,7 @@ class DForBlockFabric : ModInitializer {
         }
 
         ServerPlayerEvents.JOIN.register { player ->
-            var payload = PlayerJoinLeaveData(player.displayName.string)
+            var payload = PlayerJoinLeaveData(player.displayName.string, playerUuid = player.stringUUID)
             if (isLuckperms) {
                 payload = payload.copy(
                     prefix = luckpermsPrefixByUUID(player.uuid),
@@ -94,7 +99,8 @@ class DForBlockFabric : ModInitializer {
 
         ServerPlayerEvents.LEAVE.register { player ->
             var payload = PlayerJoinLeaveData(
-                player.displayName.string
+                player.displayName.string,
+                playerUuid = player.stringUUID,
             )
             if (isLuckperms) {
                 payload = payload.copy(
@@ -111,6 +117,7 @@ class DForBlockFabric : ModInitializer {
 
             var payload = PlayerDeathData(
                 playerName = entity.displayName.string,
+                playerUuid = entity.stringUUID,
                 deathMessage = source.getLocalizedDeathMessage(entity).string,
             )
             if (isLuckperms) {

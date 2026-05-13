@@ -1,47 +1,22 @@
 package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.*
+import dev.forb.dforblock.core.config.ConfigManager
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.minecraft.commands.CommandSource
 import net.minecraft.network.chat.Component
 import net.minecraft.server.permissions.PermissionSet
-import java.io.File
-import java.nio.file.Files
 import kotlin.coroutines.resume
-import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
 import kotlin.time.Clock
 
 class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
 
-    override fun getConfigFile(): File = configPath.toFile()
+    override val configDir = dev.forb.dforblock.fabric.configDir
 
-    override fun ensureConfigFile(): Boolean {
-        try {
-            configDir.createDirectories()
-        } catch (e: Exception) {
-            LOGGER.error { e.stackTraceToString() }
-        }
-        if (!configPath.exists()) {
-            val resourceStream = DForBlockFabric::class.java.getResourceAsStream("/dforblock.json5")
-            if (resourceStream != null) {
-                Files.copy(resourceStream, configPath)
-                resourceStream.close()
-                LOGGER.warn { "========================================" }
-                LOGGER.warn { "Created config file, please restart after configuring it correctly." }
-                LOGGER.warn { "========================================" }
-            } else
-                LOGGER.error { "Unexpected state, 'config file does not exist', please ensure mod jar is unmodified." }
-            return false
-        }
-        return true
-    }
-
-    override fun broadcastMessage(
-        payload: DiscordMessageData,
-        config: DForBlockConfig
-    ) {
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, config)
+    override fun broadcastMessage(payload: DiscordMessageData) {
+        val template = mod.configManager.messages.discordUserChats ?: return
+        val channel = mod.configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId } ?: return
+        val kyoriComponent = prepareMinecraftMiniMessage(payload, channel.key, template)
         mod.adventure?.players()?.sendMessage(kyoriComponent)
             ?: return LOGGER.error { "Unexpected state, 'adventure is null', please report this.." }
     }

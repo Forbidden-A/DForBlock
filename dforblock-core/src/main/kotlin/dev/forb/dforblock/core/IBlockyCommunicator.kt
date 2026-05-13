@@ -1,14 +1,14 @@
 package dev.forb.dforblock.core
 
+import dev.forb.dforblock.core.config.ConfigManager
 import java.io.File
+import java.nio.file.Path
 
 interface IBlockyCommunicator {
 
-    fun getConfigFile(): File
+    val configDir: Path
 
-    fun ensureConfigFile(): Boolean
-
-    fun broadcastMessage(payload: DiscordMessageData, config: DForBlockConfig)
+    fun broadcastMessage(payload: DiscordMessageData)
 
     fun onlinePlayers(): Set<String>
 

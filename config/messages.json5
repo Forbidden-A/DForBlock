@@ -1,0 +1,90 @@
+{
+  // Message to send ingame when a discord user sends a message in a channel
+  //    Variables: {author}, {content},
+  //    {role}: the user's topmost role (if the user doesn't have a role, this will be "Discord")
+  discordUserChats: "[{role}] {author} » {content}",
+  // The formats for discord
+  //    Variables: {game}, {gameVersion}, {onlinePlayers}, {playerLimit}
+  //    {mspt}, {tps}, {targetTps}, {uptime}
+  //    If the message is player-related:
+  //        {playerName}, {playerUuid}, {prefix}, {suffix}
+  playerChats: {
+    // Special Variables: {messageContent}, {channelName}
+    isEnabled: true, // true is the default
+    targetChannel: "default", // 'default' is the default
+    asWebhook: true, // false is the default
+    webhookPersonaName: null,
+    webhookPersonaAvatarUrl: null,
+    // A message which uses components v2 (container instead of embed)
+    container: {
+      color: 0xCCFFCC,
+      elements: [
+        {
+          type: "textDisplay",
+          // Since this is a webhook message I don't need to write the player name
+          text: "**{messageContent}**"
+        }
+      ]
+    }
+  },
+  playerJoins: {
+    // A classic message which can include content and embed
+    standard: {
+      content: "**{playerName} has joined the game.**"
+    }
+  },
+  playerLeaves: {
+    standard: {
+      content: "**{playerName} has left the game.**"
+    }
+  },
+  playerDies: {
+    // Special Variables: {deathMessage}
+    standard: {
+      embed: {
+        title: null,
+        description: "**{deathMessage}**",
+        color: 0xFFCCFF,
+        authorName: "{playerName}",
+        authorUrl: null,
+        authorIcon: "https://api.mineatar.io/head/{playerUuid}?scale=16",
+        footerText: "may they rest in peace",
+        footerIconUrl: "https://api.mineatar.io/head/{playerUuid}?scale=16"
+      }
+    }
+  },
+  mcPlayerAdvances: {
+    container: {
+      color: 0xFFFFFF,
+      elements: [
+        {
+          type: "textDisplay",
+          text: "**{playerName} has made an advancement!**"
+        },
+        {
+          type: "separator",
+          spacingSize: "2", // 1 is small, 2 is large
+          divider: true
+        },
+        {
+          type: "textDisplay",
+          text: "**{advancementName}**"
+        },
+        {
+          type: "textDisplay",
+          text: "`{advancementDescription}`"
+        }
+      ]
+    }
+  },
+  serverStarts: {
+    standard: {
+      content: "**Server has started.**"
+    }
+  },
+  serverStops: {
+    standard: {
+      content: "**Server has stopped.**"
+    }
+  }
+}
