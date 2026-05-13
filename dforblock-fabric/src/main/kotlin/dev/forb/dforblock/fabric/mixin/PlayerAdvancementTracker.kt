@@ -30,6 +30,8 @@ open class PlayerAdvancementTrackerMixin {
         val displayOptional = holder.value.display()
         if (displayOptional.isEmpty) return
         val displayInfo = displayOptional.get()
+        if (!displayInfo.shouldAnnounceChat())
+            return
 
         var payload = MCAdvancementMadeData(
             playerName = player.displayName.string,
