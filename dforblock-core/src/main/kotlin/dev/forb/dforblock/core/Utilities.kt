@@ -52,18 +52,19 @@ fun CommandExecutionConfig.isAllowed(command: String): Boolean {
     return false
 }
 
-suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, messageBuilder: MessageBuilder.() -> Unit): Boolean {
+suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, skinHint: SkinHint?, configManager: ConfigManager,
+                                        placeholders: Map<String, String>? = null, messageBuilder: MessageBuilder.() -> Unit): Boolean {
     return try {
         if (template.asWebhook) {
             if (!allowsWebhooks)
                 return false.also { LOGGER.error { "Could not create webhook message as channel '${template.targetChannel}' does not allow webhooks." } }
-            kord.rest.webhook.executeWebhook(Snowflake(webhookId!!), webhookToken!!) {
-                if (template.webhookPersonaName != null)
-                    username = template.webhookPersonaName
-                if (template.webhookPersonaAvatarUrl != null)
-                    avatarUrl = template.webhookPersonaAvatarUrl
+            val withComponents = template.container != null
+            kord.rest.webhook.executeWebhook(webhookId = Snowflake(webhookId!!), token = webhookToken!!, withComponents = withComponents) {
+                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: skinHint?.username ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
+                avatarUrl = template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?:  skinHint?.build(configManager) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
                 messageBuilder()
             }
+            return true
         }
         kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
         true
@@ -98,7 +99,10 @@ fun buildPlayerPlaceholders(name: String, uuid: String, prefix: String?, suffix:
     )
 }
 
-fun String.withPlaceholders(placeholders: Map<String, String>): String {
+fun String.withPlaceholders(placeholders: Map<String, String>?): String {
+    if (placeholders == null)
+        return this
+
     var result = this
     for ((key, value) in placeholders) {
         result = result.replace(key, value)

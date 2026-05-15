@@ -5,7 +5,9 @@ plugins {
 
 version = property("version") as String
 
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
+allprojects {
+    repositories {
+        mavenCentral()
+        maven("https://snapshots.kord.dev")
+    }
 }

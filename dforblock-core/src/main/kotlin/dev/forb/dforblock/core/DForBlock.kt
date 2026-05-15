@@ -438,7 +438,8 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, payload.skinHint,
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle game message received." }
             }
@@ -456,7 +457,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, null, configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle server start event." }
             }
@@ -474,7 +475,8 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, null,
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle server stop event." }
             }
@@ -498,7 +500,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template,  payload.skinHint,
+
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player join event." }
             }
@@ -522,7 +526,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, payload.skinHint,
+
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player leave event." }
             }
@@ -550,7 +556,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, payload.skinHint,
+
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player death event." }
             }
@@ -581,7 +589,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, payload.skinHint,
+
+                configManager, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player death event." }
             }
