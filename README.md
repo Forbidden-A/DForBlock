@@ -102,4 +102,6 @@ Please use the default config files available in the config folder for reference
 ## 🛠️ TODO
 * **Discord Attachments:** Prevent image-only messages from being swallowed by the `message.content.isEmpty()` check in `onDiscordMessageReceive`.
 * **Possible Memory Leak:** Ensure `taskScope` is properly cancelled and reinstantiated, or reused cleanly, in `DForBlockTaskScheduler` across server `/reload` events.
-* **Discord Developer Panel:** Include images detailing bot creation and intent selection 
+* **Discord Developer Panel:** Include images detailing bot creation and intent selection
+* **In-game Console:** Add Game console -> Discord Channel feature (Read-Only game console in Discord)
+* **Server Watchdog:** Add optional Watchdog messages where are sent to a target channel if the server becomes unresponsive for X seconds. 
