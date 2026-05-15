@@ -3,6 +3,7 @@ package dev.forb.dforblock.core.config
 import dev.forb.dforblock.core.LOGGER
 import kotlinx.serialization.json.Json
 import li.songe.json5.decodeFromJson5String
+import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.div
@@ -21,15 +22,17 @@ class ConfigManager(val configDir: Path, val json: Json) {
         return try {
             LOGGER.info { "Loading DForBlock configurations..." }
             configDir.createDirectories()
-            core = loadOrGenerate("core.json5")
 
-            channels = loadOrGenerate("channels.json5")
+            val coreFile = ensureFile("core.json5")
+            val channelsFile = ensureFile("channels.json5")
+            val permissionsFile = ensureFile("permissions.json5")
+            val messagesFile = ensureFile("messages.json5")
 
+            core = loadFile(coreFile)
+            channels = loadFile(channelsFile)
             require(channels.isNotEmpty()) { "Configuration error: Must include a channel." }
-
-            permissions = loadOrGenerate("permissions.json5")
-
-            messages = loadOrGenerate("messages.json5")
+            permissions = loadFile(permissionsFile)
+            messages = loadFile(messagesFile)
 
             LOGGER.info { "Configurations loaded successfully." }
             true
@@ -39,7 +42,7 @@ class ConfigManager(val configDir: Path, val json: Json) {
         }
     }
 
-    private inline fun <reified T> loadOrGenerate(fileName: String): T {
+    private fun ensureFile(fileName: String): File {
         val file = (configDir / fileName).toFile()
 
         if (!file.exists()) {
@@ -54,6 +57,10 @@ class ConfigManager(val configDir: Path, val json: Json) {
             }
         }
 
+        return file
+    }
+
+    private inline fun <reified T> loadFile(file: File): T {
         val fileContent = file.readText(Charsets.UTF_8)
         return json.decodeFromJson5String<T>(fileContent)
     }
