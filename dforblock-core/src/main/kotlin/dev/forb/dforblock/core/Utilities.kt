@@ -32,12 +32,12 @@ val Duration.beautify: String get() = this.toComponents { days, hours, minutes, 
 }
 
 fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
+    val content = if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink?:""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
     val processedString = template
         .replace("{author}", payload.author)
-        .replace("{content}", payload.content)
+        .replace("{content}", content)
         .replace("{role}", payload.role)
         .replace("{channel}", channelName)
-
     val miniMessage = MiniMessage.miniMessage()
     return miniMessage.deserialize(processedString)
 }

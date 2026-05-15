@@ -205,19 +205,41 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             return
         }
 
-        if (message.content.isEmpty()) {
-            message.attachments.ifEmpty { LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" } }
+        if (message.content.isEmpty() && message.attachments.isEmpty()) {
+            LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" }
             return
         }
         val member = message.getAuthorAsMemberOrNull() ?: message.author
         val name = member?.effectiveName ?: "Unknown"
-        val payload = DiscordMessageData(
-            author = name,
-            content = message.content,
-            channelId = message.channelId.value,
-            messageID = message.id.value,
-        )
-        communicator.broadcastMessage(payload)
+
+        val payloads: MutableSet<DiscordMessageData> = mutableSetOf()
+
+        if (message.content.isNotEmpty()) {
+            payloads.add(
+                DiscordMessageData(
+                    author = name,
+                    content = message.content,
+                    channelId = message.channelId.value,
+                    messageID = message.id.value,
+                )
+            )
+        }
+
+        if (message.attachments.isNotEmpty()) {
+            message.attachments.forEachIndexed { index, attachment ->
+                val payload = DiscordMessageData(
+                    author = name,
+                    content = "[Attachment #${index + 1}]",
+                    channelId = message.channelId.value,
+                    messageID = message.id.value,
+                    isAttachment = true,
+                    attachmentLink = attachment.url
+                )
+                payloads.add(payload)
+            }
+        }
+
+        payloads.forEach { communicator.broadcastMessage(it) }
     }
 
     suspend fun <I> showOnlinePlayers(
