@@ -1,21 +1,24 @@
 package dev.forb.dforblock.core
 
-import dev.kord.common.entity.PresenceStatus
+import dev.forb.dforblock.core.config.ChannelConfig
+import dev.forb.dforblock.core.config.ConfigManager
+import dev.forb.dforblock.core.config.Core
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
 import kotlinx.coroutines.*
+import java.util.Collections.emptySet
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 
 class DForBlockTaskScheduler(
     private val schedulerScope: CoroutineScope,
-    private val config: DForBlockConfig,
-    private var defaultChannel: ChannelConfig,
+    private val configManager: ConfigManager,
     private var kord: Kord,
     private val communicator: IBlockyCommunicator
 ) {
-    private var updateChannelJob: Job? = null
+    private var updateChannelJobs: MutableSet<Job> = ConcurrentHashMap.newKeySet()
     private var updatePresenceJob: Job? = null
 
     private fun replaceStatistics(statistics: GameStatistics, text: String): String = text
@@ -26,49 +29,55 @@ class DForBlockTaskScheduler(
         .replace("{targetTps}", "%.1f".format(statistics.targetTps))
         .replace("{mspt}", "%.2f".format(statistics.mspt))
 
-    private val updateChannelBlock: suspend CoroutineScope.() -> Unit = {
+    private suspend fun CoroutineScope.updateChannel(channelName: String, targetChannel: ChannelConfig) {
+        if (targetChannel.topicTemplate == null) { return }
+
         while (isActive) {
-            val topic = replaceStatistics(communicator.serverStatistics(), config.formats.defaultChannelTopic)
+            val placeholders = buildCommonPlaceholders(communicator)
+            val topic = targetChannel.topicTemplate.withPlaceholders(placeholders)
             val patchRequest = ChannelModifyPatchRequest(
                 topic = Optional.Value(topic)
             )
             try {
                 kord.rest.channel.patchChannel(
-                    channelId = Snowflake(defaultChannel.channelId),
+                    channelId = Snowflake(targetChannel.channelId),
                     channel = patchRequest,
                     reason = "default channel topic is enabled.",
                 )
             } catch (e: Exception) {
-                LOGGER.error { "Could not update channel topic: ${e.stackTraceToString()}" }
+                LOGGER.error { "Could not update channel topic: ${e.message}\n${e.stackTraceToString()}" }
             }
             delay(5.minutes)
         }
     }
 
     private val updatePresenceBlock: suspend CoroutineScope.() -> Unit = {
-        val status = when (val status = config.discordStatus) {
-            0 -> PresenceStatus.Online
-            1 -> PresenceStatus.Idle
-            2 -> PresenceStatus.DoNotDisturb
-            3 -> PresenceStatus.Offline
-            else -> PresenceStatus.Online.apply { LOGGER.info { "Unexpected status: $status" } }
-        }
         while (isActive) {
-            val statistics = communicator.serverStatistics()
-            val presenceText = replaceStatistics(statistics, config.formats.discordPresenceText)
             try {
+                val statistics = communicator.serverStatistics()
+                val placeholders = buildCommonPlaceholders(statistics)
                 kord.editPresence {
-                    this.status = status
-                    this.since = statistics.startup
-                    if (config.useRichPresence)
-                        when (config.richPresenceType) {
-                            0 -> playing(presenceText)
-                            1 -> listening(presenceText)
-                            2 -> watching(presenceText)
-                            3 -> competing(presenceText)
-                            4 -> streaming(presenceText, config.discordStreamUrl)
+                    status = configManager.core.discordStatus
+                    since = statistics.startup
+                    if (configManager.core.showActivity) {
+                        val text = configManager.core.activityText?.withPlaceholders(placeholders) ?: ""
+                        when (configManager.core.activityType) {
+                            Core.RichPresenceType.Playing -> playing(text)
+                            Core.RichPresenceType.Listening -> listening(text)
+                            Core.RichPresenceType.Watching -> watching(text)
+                            Core.RichPresenceType.Competing -> competing(text)
+                            Core.RichPresenceType.Streaming -> streaming(
+                                text,
+                                configManager.core.streamUrl?.withPlaceholders(placeholders) ?: ""
+                            )
+                            else -> {
+                                LOGGER.error { "Unknown activity type '${configManager.core.activityType}'" }
+                            }
                         }
-                    this.state = replaceStatistics(statistics, config.formats.discordStateText)
+                    }
+                    else if (configManager.core.showThinkingBubble) {
+                        state = configManager.core.thinkingBubbleText?.withPlaceholders(placeholders)
+                    }
                 }
             } catch (e: Exception) {
                 LOGGER.error { "Could not update presence text: ${e.stackTraceToString()}" }
@@ -78,21 +87,24 @@ class DForBlockTaskScheduler(
     }
 
     fun start() {
-        if (config.useDefaultChannelTopic) {
-            updateChannelJob = schedulerScope.launch(block = updateChannelBlock)
-            LOGGER.info { "Started update channel job." }
-        }
-
-        if (config.useRichPresence || config.useStateOnly) {
+        if (configManager.core.showActivity || configManager.core.showThinkingBubble) {
             updatePresenceJob = schedulerScope.launch(block = updatePresenceBlock)
             LOGGER.info { "Started update presence job." }
         }
+
+        configManager.channels.forEach { (name, channel) ->
+            if (channel.topicTemplate != null) {
+                updateChannelJobs.add(schedulerScope.launch { updateChannel(name, channel) })
+                LOGGER.info { "Started update channel job for channel '$name' with id '${channel.channelId}'." }
+            }
+        }
+
     }
 
     fun stop() {
-        updateChannelJob?.cancel()
+        updateChannelJobs.forEach { it.cancel() }
         updatePresenceJob?.cancel()
-        updateChannelJob = null
+        updateChannelJobs = emptySet()
         updatePresenceJob = null
         schedulerScope.coroutineContext.cancelChildren()
         LOGGER.info { "All jobs cancelled." }

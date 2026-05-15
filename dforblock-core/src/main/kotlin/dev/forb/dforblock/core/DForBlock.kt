@@ -1,12 +1,8 @@
 package dev.forb.dforblock.core
 
+import dev.forb.dforblock.core.config.ConfigManager
 import dev.kord.common.Color
-import dev.kord.common.entity.ButtonStyle
-import dev.kord.common.entity.MessageFlag
-import dev.kord.common.entity.MessageFlags
-import dev.kord.common.entity.SeparatorSpacingSize
-import dev.kord.common.entity.Snowflake
-import dev.kord.common.entity.TextInputStyle
+import dev.kord.common.entity.*
 import dev.kord.common.exception.RequestException
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.modal
@@ -47,7 +43,7 @@ val JSON = Json {
 /*
 * This is the core of this project
 *  */
-class DForBlock(val communicator: IBlockyCommunicator) {
+class DForBlock(private val configManager: ConfigManager, private val communicator: IBlockyCommunicator) {
 
     /**
      * Variables
@@ -58,10 +54,6 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     private val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]))
 
     private lateinit var kord: Kord
-
-    private lateinit var config: DForBlockConfig
-
-    private lateinit var defaultChannel: ChannelConfig
 
     lateinit var taskScheduler: DForBlockTaskScheduler
         private set
@@ -79,31 +71,11 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     fun start() {
         LOGGER.info { "DForBlock starting..." }
 
-        if (!communicator.ensureConfigFile())
+        val isConfigLoaded = configManager.load()
+
+        if (!isConfigLoaded)
             return LOGGER.error { "Start up halted: Failed to load config file." }
 
-        try {
-            config = loadConfig(communicator.getConfigFile(), JSON)
-        } catch (e: Exception) {
-            return LOGGER.error { "Start up halted: Failed to load config: ${e.stackTraceToString()}" }
-        }
-
-        val defaultChannel = config.channels["default"]
-            ?: return LOGGER.error { "Start up halted: You must configure a channel with the name 'default'." }
-
-        if (config.richPresenceType !in 0..4)
-            return LOGGER.error { "Start up halted: rich presence must be between 0 and 2." }
-
-        if (config.discordStatus !in 0..3)
-            return LOGGER.error { "Start up halted: Discord status must be between 0 and 3." }
-
-        if (config.useStateOnly && config.useRichPresence)
-            return LOGGER.error { "Start up halted: Configuration conflict; both useStateOnly and useRichPresence are true." }
-
-        if (config.runCommandList.whitelist != null && config.runCommandList.blacklist != null)
-            return LOGGER.error { "Start up halted: Configuration conflict: both runCommandList.whitelist and runCommandList.blacklist are defined." }
-
-        this.defaultChannel = defaultChannel
         botScope.launch { login() }
         isInitialised = true
         LOGGER.info { "Initialisation complete.." }
@@ -115,8 +87,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         setup()
         this.taskScheduler = DForBlockTaskScheduler(
             schedulerScope = this.taskScope,
-            config = this.config,
-            defaultChannel = this.defaultChannel,
+            configManager = configManager,
             kord = this.kord,
             communicator = this.communicator
         )
@@ -127,11 +98,11 @@ class DForBlock(val communicator: IBlockyCommunicator) {
     }
 
     private suspend fun setup() {
-        kord = Kord(config.discordToken) {
+        kord = Kord(configManager.core.discordToken) {
             enableShutdownHook = true
         }
 
-        for (guildId in config.guildIds) {
+        for (guildId in configManager.core.guildIds) {
             createGuildCommands(kord, guildId)
         }
 
@@ -142,13 +113,13 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             onServerStart()
         }
 
-        kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand(config) }
+        kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand() }
 
-        kord.on<GuildButtonInteractionCreateEvent> { onDiscordButtonPress(config) }
+        kord.on<GuildButtonInteractionCreateEvent> { onDiscordButtonPress() }
 
-        kord.on<GuildModalSubmitInteractionCreateEvent> { onDiscordModalSubmit(config) }
+        kord.on<GuildModalSubmitInteractionCreateEvent> { onDiscordModalSubmit() }
 
-        kord.on<MessageCreateEvent> { onDiscordMessageReceive(config) }
+        kord.on<MessageCreateEvent> { onDiscordMessageReceive() }
 
         kord.on<DisconnectEvent> {
             LOGGER.info { "Gateway disconnected." }
@@ -191,39 +162,39 @@ class DForBlock(val communicator: IBlockyCommunicator) {
      * Discord Event Handlers
      */
 
-    suspend fun GuildChatInputCommandInteractionCreateEvent.onDiscordChatCommand(config: DForBlockConfig) {
+    suspend fun GuildChatInputCommandInteractionCreateEvent.onDiscordChatCommand() {
         when (interaction.invokedCommandName) {
-            "playerlist" -> showOnlinePlayers(interaction, config)
-            "panel" -> sendNewPanel(interaction, config)
+            "playerlist" -> showOnlinePlayers(interaction)
+            "panel" -> sendNewPanel(interaction)
         }
     }
 
-    suspend fun GuildButtonInteractionCreateEvent.onDiscordButtonPress(config: DForBlockConfig) {
+    suspend fun GuildButtonInteractionCreateEvent.onDiscordButtonPress() {
         when (interaction.componentId) {
             "BUTTON_STOP_SERVER" -> {
-                handleStopServerButton(interaction, config)
+                handleStopServerButton(interaction)
             }
 
             "BUTTON_RUN_COMMAND" -> {
-                handleRunCommandButton(interaction, config)
+                handleRunCommandButton(interaction)
             }
 
             "BUTTON_SERVER_PLAYERS" -> {
-                showOnlinePlayers(interaction, config)
+                showOnlinePlayers(interaction)
             }
 
             "BUTTON_SERVER_STATUS" -> {
-                handleServerStatusButton(interaction, config)
+                handleServerStatusButton(interaction)
             }
         }
     }
 
-    suspend fun GuildModalSubmitInteractionCreateEvent.onDiscordModalSubmit(config: DForBlockConfig) {
+    suspend fun GuildModalSubmitInteractionCreateEvent.onDiscordModalSubmit() {
         if (interaction.modalId == "MODAL_RUN_COMMAND")
             handleCommandRunModalSubmission(interaction)
     }
 
-    suspend fun MessageCreateEvent.onDiscordMessageReceive(config: DForBlockConfig) {
+    suspend fun MessageCreateEvent.onDiscordMessageReceive() {
         if (message.author?.isBot ?: true)
             return
 
@@ -234,9 +205,10 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             return
         }
 
-        if (message.content.isEmpty())
-            return LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" }
-
+        if (message.content.isEmpty()) {
+            message.attachments.ifEmpty { LOGGER.warn { "detected empty discord message, are you sure you enabled the message content intent?" } }
+            return
+        }
         val member = message.getAuthorAsMemberOrNull() ?: message.author
         val name = member?.effectiveName ?: "Unknown"
         val payload = DiscordMessageData(
@@ -245,16 +217,15 @@ class DForBlock(val communicator: IBlockyCommunicator) {
             channelId = message.channelId.value,
             messageID = message.id.value,
         )
-        communicator.broadcastMessage(payload, config)
+        communicator.broadcastMessage(payload)
     }
 
     suspend fun <I> showOnlinePlayers(
         interaction: I,
-        config: DForBlockConfig
     ) where I : ActionInteraction, I : GuildInteraction {
         val response = interaction.deferEphemeralResponse()
-        val permission = config.permissions.playerlistCommand
-        if (permission != null && permission.check(interaction, reversed = true)
+        val permission = configManager.permissions.playerlistCommand
+        if (permission.check(interaction, reversed = true)
         ) {
             response.respond {
                 content = "**You do not have permission to use this command!**"
@@ -281,11 +252,10 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun <I> handleServerStatusButton(
         interaction: I,
-        config: DForBlockConfig
     ) where I : ActionInteraction, I : GuildInteraction {
         val response = interaction.deferEphemeralResponse()
-        val permission = config.permissions.statusButton
-        if (permission != null && permission.check(interaction, reversed = true)) {
+        val permission = configManager.permissions.statusButton
+        if (permission.check(interaction, reversed = true)) {
             response.respond {
                 content = "**You do not have permission to use this button!**"
             }
@@ -309,13 +279,11 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         }
     }
 
-
     suspend fun <I> sendNewPanel(
         interaction: I,
-        config: DForBlockConfig
     ) where I : ActionInteraction, I : GuildInteraction {
         val response = interaction.deferPublicResponse()
-        if (config.permissions.panelCommand.check(interaction, reversed = true)) {
+        if (configManager.permissions.panelCommand.check(interaction, reversed = true)) {
             response.respond {
                 content = "**You do not have permission to use this command!**"
             }
@@ -343,7 +311,8 @@ class DForBlock(val communicator: IBlockyCommunicator) {
                         interactionButton(style = ButtonStyle.Danger, customId = "BUTTON_STOP_SERVER") {
                             label = "Stop"
                         }
-                        if (config.panelLink != null) linkButton(url = config.panelLink) { label = "Open Panel" }
+                        if (configManager.core.serverPanelUrl != null)
+                            linkButton(url = configManager.core.serverPanelUrl ?: "") { label = "Open Panel" }
                     }
                 }
             }
@@ -354,11 +323,10 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun <I> handleStopServerButton(
         interaction: I,
-        config: DForBlockConfig
     ) where I : ActionInteraction, I : GuildInteraction {
         val response = interaction.deferEphemeralResponse()
 
-        if (config.permissions.stopButton.check(interaction, reversed = true)) {
+        if (configManager.permissions.stopButton.check(interaction, reversed = true)) {
             response.respond {
                 content = "**You do not have permission to use this button!**"
             }
@@ -377,9 +345,8 @@ class DForBlock(val communicator: IBlockyCommunicator) {
 
     suspend fun <I> handleRunCommandButton(
         interaction: I,
-        config: DForBlockConfig
     ) where I : ComponentInteraction, I : GuildInteraction {
-        if (config.permissions.runCommandButton.check(interaction, reversed = true)) {
+        if (configManager.permissions.runCommandButton.check(interaction, reversed = true)) {
             interaction.respondEphemeral {
                 content = "**You do not have permission to use this button!**"
             }
@@ -401,7 +368,7 @@ class DForBlock(val communicator: IBlockyCommunicator) {
         val response = interaction.deferEphemeralResponse()
         val commandContent = interaction.textInputs["MODAL_INPUT_COMMAND"]?.value ?: return
         val command = commandContent.split(" ").firstOrNull() ?: return
-        if (config.runCommandList.blacklist?.contains(command) == true || config.runCommandList.whitelist?.contains(command) == false) {
+        if (!configManager.permissions.allowedCommands.isAllowed(command)) {
             response.respond {
                 flags = MessageFlags(MessageFlag.IsComponentsV2)
                 container {
@@ -428,116 +395,174 @@ class DForBlock(val communicator: IBlockyCommunicator) {
      * Game Event Handlers
      */
 
-    fun onBlockyMessageReceive(payload: MinecraftMessageData) {
+    fun onBlockyMessageReceive(payload: GameMessageData) {
         if (!isReady)
-            return LOGGER.warn { "Attempted to handle message before discord is ready, ignoring..." }
+            return LOGGER.warn { "Attempted to handle message before discord is ready, message will not be sent." }
 
-        val channel = config.channels[payload.channelName]
-            ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
+        val template = configManager.messages.playerChats ?: return
+        if (!template.isEnabled) return
 
-        if (channel.useWebhooks)
-            createWebhookMessage(config, channel, botScope, kord, payload)
-        else
-            createMessage(config, channel, botScope, kord, payload)
+        val placeholders = (
+                buildCommonPlaceholders(communicator)
+                        + buildPlayerPlaceholders(
+                    payload.playerName,
+                    payload.playerUuid,
+                    payload.prefix,
+                    payload.suffix
+                )
+                        + mapOf("{messageContent}" to payload.messageContent, "{channelName}" to payload.channelName)
+                )
+        val channel = configManager.channels[payload.channelName] ?: configManager.channels[template.targetChannel]
+        ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle game message received." }
+            }
+        }
     }
 
     fun onServerStart() {
         if (!isReady)
-            return LOGGER.warn { "Attempted to send startup message before discord is ready.. message will not be sent." }
+            return LOGGER.warn { "Attempted to send startup message before discord is ready, message will not be sent." }
 
-        sendDiscordMessage(
-            config.formats.serverStartMessage,
-            Snowflake(defaultChannel.channelId),
-            botScope,
-            kord
-        )
+        val template = configManager.messages.serverStarts ?: return
+        if (!template.isEnabled) return
+        val placeholders = buildCommonPlaceholders(communicator)
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle server start event." }
+            }
+        }
     }
 
     fun onServerStop() {
         if (!isReady)
-            return LOGGER.warn { "Discord disconnected before sending stopped message.. message will not be sent." }
+            return LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
 
-        sendDiscordMessage(
-            config.formats.serverStopMessage,
-            Snowflake(defaultChannel.channelId),
-            botScope,
-            kord
-        )
+        val template = configManager.messages.serverStops ?: return
+        if (!template.isEnabled) return
+        val placeholders = buildCommonPlaceholders(communicator)
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle server stop event." }
+            }
+        }
     }
 
     fun onPlayerJoin(payload: PlayerJoinLeaveData) {
         if (!isReady)
-            return LOGGER.warn { "Attempted to send player join message while discord is not ready... message will not be sent." }
+            return LOGGER.warn { "Attempted to handle player join before discord is ready, message will not be sent." }
 
-        sendDiscordMessage(
-            config.formats.playerJoinMessage
-                .replace("{player}", payload.playerName)
-                .replace("{prefix}", payload.prefix)
-                .replace("{suffix}", payload.suffix),
-            Snowflake(defaultChannel.channelId),
-            botScope,
-            kord
+        val template = configManager.messages.playerJoins ?: return
+        if (!template.isEnabled) return
+
+        val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
+            payload.playerName,
+            payload.playerUuid,
+            payload.prefix,
+            payload.suffix
         )
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle player join event." }
+            }
+        }
     }
 
     fun onPlayerLeave(payload: PlayerJoinLeaveData) {
         if (!isReady)
-            return LOGGER.warn { "Attempted to send player leave message while discord is not ready... message will not be sent." }
+            return LOGGER.warn { "Attempted to handle player leave before discord is ready, message will not be sent." }
 
-        sendDiscordMessage(
-            config.formats.playerLeaveMessage
-                .replace("{player}", payload.playerName)
-                .replace("{prefix}", payload.prefix)
-                .replace("{suffix}", payload.suffix),
-            Snowflake(defaultChannel.channelId),
-            botScope,
-            kord
+        val template = configManager.messages.playerLeaves ?: return
+        if (!template.isEnabled) return
+
+        val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
+            payload.playerName,
+            payload.playerUuid,
+            payload.prefix,
+            payload.suffix
         )
-    }
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
-    fun onPlayerDeath(payload: PlayerDeathData) = botScope.launch {
-        if (!isReady)
-            return@launch LOGGER.warn { "Attempted to send player death message while discord is not ready... message will not be sent." }
-
-        val processedContent = config.formats.playerDeathMessage
-            .replace("{player}", payload.playerName)
-            .replace("{prefix}", payload.prefix)
-            .replace("{suffix}", payload.suffix)
-            .replace("{deathMessage}", payload.deathMessage)
-        try {
-            kord.rest.channel.createMessage(Snowflake(defaultChannel.channelId)) {
-                flags = MessageFlags(MessageFlag.IsComponentsV2)
-                container {
-                    accentColor = Color(Random.nextInt(0..0xFFFFFF))
-                    textDisplay(processedContent)
-                }
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle player leave event." }
             }
-        } catch (e: Exception) {
-            LOGGER.warn { "Failed to send death message: ${e.stackTraceToString()}" }
         }
     }
 
-    fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botScope.launch {
+    fun onPlayerDeath(payload: PlayerDeathData) {
         if (!isReady)
-            return@launch LOGGER.warn { "Attempted to send player advancement message while discord is not ready... message will not be sent." }
+            return LOGGER.warn { "Attempted to handle player death before discord is ready, message will not be sent." }
 
-        val processedContent = config.formats.mcAdvancementMadeMessage
-            .replace("{player}", payload.playerName)
-            .replace("{prefix}", payload.prefix)
-            .replace("{suffix}", payload.suffix)
-            .replace("{name}", payload.advancementName)
-            .replace("{description}", payload.advancementDescription)
-        try {
-            kord.rest.channel.createMessage(Snowflake(defaultChannel.channelId)) {
-                flags = MessageFlags(MessageFlag.IsComponentsV2)
-                container {
-                    accentColor = Color(Random.nextInt(0..0xFFFFFF))
-                    textDisplay(processedContent)
-                }
+        val template = configManager.messages.playerDies ?: return
+        if (!template.isEnabled) return
+
+        val placeholders = (
+                buildCommonPlaceholders(communicator)
+                        + buildPlayerPlaceholders(
+                    payload.playerName,
+                    payload.playerUuid,
+                    payload.prefix,
+                    payload.suffix
+                )
+                        + mapOf("{deathMessage}" to payload.deathMessage)
+                )
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle player death event." }
             }
-        } catch (e: Exception) {
-            LOGGER.warn { "Failed to send advancement message: ${e.stackTraceToString()}" }
+        }
+    }
+
+    fun onMinecraftAdvancement(payload: MCAdvancementMadeData) {
+        if (!isReady)
+            return LOGGER.warn { "Attempted to handle mc player advancement before discord is ready, message will not be sent." }
+
+        val template = configManager.messages.mcPlayerAdvances ?: return
+        if (!template.isEnabled) return
+
+        val placeholders = (
+                buildCommonPlaceholders(communicator)
+                        + buildPlayerPlaceholders(
+                    payload.playerName,
+                    payload.playerUuid,
+                    payload.prefix,
+                    payload.suffix
+                )
+                        + mapOf(
+                    "{advancementName}" to payload.advancementName,
+                    "{advancementDescription}" to payload.advancementDescription
+                )
+                )
+        val channel = configManager.channels[template.targetChannel]
+            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+
+        botScope.launch {
+            val success = channel.createMessage(kord, template, constructMessage(template, placeholders))
+            if (!success) {
+                LOGGER.warn { "Failed to handle player death event." }
+            }
         }
     }
 
