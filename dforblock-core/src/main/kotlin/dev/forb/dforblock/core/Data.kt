@@ -18,7 +18,9 @@ data class DiscordMessageData(
     val content: String,
     val channelId: ULong,
     val messageID: ULong,
-    val role: String = "Discord"
+    val role: String = "Discord",
+    val isAttachment: Boolean = false,
+    val attachmentLink: String? = null
 )
 
 data class PlayerJoinLeaveData(
