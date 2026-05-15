@@ -38,7 +38,7 @@ This file controls the bot's core connection and what it displays on its Discord
     * `showActivity` (and `activityText`): The classic "Watching / Playing" status (e.g., "Watching 5 playing Minecraft 26.1.2").
 * **Personas & Avatars**:
     * `serverPersonaName`: The default name the bot uses when sending **Webhook** messages as the "Server" (e.g., "DForBlock").
-    * `minecraftAvatarProviderUrl` / `hytaleAvatarProviderUrl`: These are API links used to fetch player head images.
+    * `minecraftAvatarProviderUrl` / `hytaleAvatarProviderUrl`: These are API links used to fetch player head images. Used as fallback for player-related events when a custom url is not provided for the event.
 
 ### 2. `channels.json5` (Where the Bot Talks)
 Define the Discord channels the bot is allowed to interact with. You can set up multiple channels and each with a custom name (like `staff`).
