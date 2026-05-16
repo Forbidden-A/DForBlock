@@ -1,18 +1,28 @@
-package dev.forb.dforblock.core
+package dev.forb.dforblock.core.discord
 
+import dev.forb.dforblock.core.IBlockyCommunicator
+import dev.forb.dforblock.core.LOGGER
+import dev.forb.dforblock.core.buildCommonPlaceholders
 import dev.forb.dforblock.core.config.ChannelConfig
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.config.Core
+import dev.forb.dforblock.core.withPlaceholders
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
-import kotlinx.coroutines.*
-import java.util.Collections.emptySet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
 
-class DForBlockTaskScheduler(
+class DiscordTaskScheduler(
     private val schedulerScope: CoroutineScope,
     private val configManager: ConfigManager,
     private var kord: Kord,
@@ -96,7 +106,7 @@ class DForBlockTaskScheduler(
     fun stop() {
         updateChannelJobs.forEach { it.cancel() }
         updatePresenceJob?.cancel()
-        updateChannelJobs = emptySet()
+        updateChannelJobs = Collections.emptySet()
         updatePresenceJob = null
         schedulerScope.coroutineContext.cancelChildren()
         schedulerScope.cancel()
