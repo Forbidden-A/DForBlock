@@ -8,6 +8,8 @@ interface IBlockyCommunicator {
 
     val configDir: Path
 
+    val isLuckperms: Boolean
+
     fun broadcastMessage(payload: DiscordMessageData)
 
     fun onlinePlayers(): Set<String>

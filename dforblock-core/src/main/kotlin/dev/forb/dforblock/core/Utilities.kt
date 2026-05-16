@@ -13,6 +13,8 @@ import dev.kord.rest.builder.message.container
 import dev.kord.rest.builder.message.embed
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -20,27 +22,6 @@ import kotlin.time.Instant
 fun PermissionNode.isAllowed(interaction: GuildInteraction): Boolean = allowEveryone || interaction.user.id.value in allowedUsers || interaction.user.roleIds.any { it.value in allowedRoles }
 fun PermissionNode.isProhibited(interaction: GuildInteraction): Boolean = !allowEveryone && interaction.user.id.value !in allowedUsers && interaction.user.roleIds.none { it.value in allowedRoles }
 fun PermissionNode.check(interaction: GuildInteraction, reversed: Boolean = false): Boolean =  if (reversed) isProhibited(interaction) else isAllowed(interaction)
-
-val Instant.duration: Duration get() = Clock.System.now() - this
-val Duration.beautify: String get() = this.toComponents { days, hours, minutes, seconds, _ ->
-    buildString {
-        if (days > 0) append("${days}d ")
-        if (hours > 0) append("${hours}h ")
-        if (minutes > 0) append("${minutes}m ")
-        append("${seconds}s")
-    }.trim()
-}
-
-fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
-    val content = if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink?:""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
-    val processedString = template
-        .replace("{author}", payload.author)
-        .replace("{content}", content)
-        .replace("{role}", payload.role)
-        .replace("{channel}", channelName)
-    val miniMessage = MiniMessage.miniMessage()
-    return miniMessage.deserialize(processedString)
-}
 
 fun CommandExecutionConfig.isAllowed(command: String): Boolean {
     if (blacklist != null)
@@ -52,30 +33,35 @@ fun CommandExecutionConfig.isAllowed(command: String): Boolean {
     return false
 }
 
-suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, skinHint: SkinHint?, configManager: ConfigManager,
-                                        placeholders: Map<String, String>? = null, messageBuilder: MessageBuilder.() -> Unit): Boolean {
-    return try {
-        if (template.asWebhook) {
-            if (!allowsWebhooks)
-                return false.also { LOGGER.error { "Could not create webhook message as channel '${template.targetChannel}' does not allow webhooks." } }
-            val withComponents = template.container != null
-            kord.rest.webhook.executeWebhook(webhookId = Snowflake(webhookId!!), token = webhookToken!!, withComponents = withComponents) {
-                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: skinHint?.username ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
-                avatarUrl = template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?:  skinHint?.build(configManager) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
-                messageBuilder()
-            }
-            return true
-        }
-        kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
-        true
-    } catch (e: Exception) {
-        LOGGER.error { "Could not create message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
-        false
-    }
+val Instant.duration: Duration get() = Clock.System.now() - this
+val Duration.beautify: String get() = this.toComponents { days, hours, minutes, seconds, _ ->
+    buildString {
+        if (days > 0) append("${days}d ")
+        if (hours > 0) append("${hours}h ")
+        if (minutes > 0) append("${minutes}m ")
+        append("${seconds}s")
+    }.trim()
 }
 
+fun String.withoutMinecraftFormatting(): String {
+    val strippedMiniMessage = MiniMessage.miniMessage().stripTags(this)
+    val component = LegacyComponentSerializer.legacyAmpersand().deserialize(strippedMiniMessage)
+    return PlainTextComponentSerializer.plainText().serialize(component)
+}
 
-fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> = buildCommonPlaceholders(communicator.serverStatistics())
+fun String.withPlaceholders(placeholders: Map<String, String>?): String {
+    if (placeholders.isNullOrEmpty())
+        return this
+
+    var result = this
+    for ((key, value) in placeholders) {
+        result = result.replace(key, value)
+    }
+
+    return result
+}
+
+fun String.withPlaceholders(vararg placeholders: Pair<String, String>): String = withPlaceholders(mapOf(*placeholders))
 
 fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
     return mapOf(
@@ -90,25 +76,49 @@ fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
     )
 }
 
-fun buildPlayerPlaceholders(name: String, uuid: String, prefix: String?, suffix: String?): Map<String, String> {
+fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> = buildCommonPlaceholders(communicator.serverStatistics())
+
+fun buildPlayerPlaceholders(playerIdentity: PlayerIdentity, configManager: ConfigManager, communicator: IBlockyCommunicator): Map<String, String> {
     return mapOf(
-        "{playerName}" to name,
-        "{playerUuid}" to uuid,
-        "{prefix}" to (prefix ?: ""),
-        "{suffix}" to (suffix ?: ""),
+        "{playerName}" to playerIdentity.name,
+        "{playerDisplayName}" to (playerIdentity.displayName ?: ""),
+        "{playerQualifiedName}" to playerIdentity.qualifiedName(configManager, communicator),
+        "{playerUuid}" to playerIdentity.uuid.toString(),
+        "{playerAvatar}" to (playerIdentity.buildAvatarUrl(configManager) ?: "")
     )
 }
+fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
+    val content = if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink?:""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
+    val processedString = template.withPlaceholders(
+        "{author}" to payload.author,
+        "{content}" to content,
+        "{role}" to payload.role,
+        "{channel}" to channelName
+    )
+    val miniMessage = MiniMessage.miniMessage()
+    return miniMessage.deserialize(processedString)
+}
 
-fun String.withPlaceholders(placeholders: Map<String, String>?): String {
-    if (placeholders == null)
-        return this
-
-    var result = this
-    for ((key, value) in placeholders) {
-        result = result.replace(key, value)
+suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, playerIdentity: PlayerIdentity?, configManager: ConfigManager, communicator: IBlockyCommunicator,
+                                        placeholders: Map<String, String>? = null, messageBuilder: MessageBuilder.() -> Unit): Boolean {
+    return try {
+        if (template.asWebhook) {
+            if (!allowsWebhooks)
+                return false.also { LOGGER.error { "Could not create webhook message as channel '${template.targetChannel}' does not allow webhooks." } }
+            val withComponents = template.container != null
+            kord.rest.webhook.executeWebhook(webhookId = Snowflake(webhookId!!), token = webhookToken!!, withComponents = withComponents) {
+                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
+                avatarUrl = template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?:  playerIdentity?.buildAvatarUrl(configManager) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
+                messageBuilder()
+            }
+            return true
+        }
+        kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
+        true
+    } catch (e: Exception) {
+        LOGGER.error { "Could not create message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
+        false
     }
-
-    return result
 }
 
 fun constructMessage(messageTemplate: MessageTemplate, placeholders: Map<String, String>): MessageBuilder.() -> Unit = {

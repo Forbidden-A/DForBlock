@@ -1,16 +1,11 @@
 package dev.forb.dforblock.core
 
-import java.util.UUID
 import kotlin.time.Instant
 
 data class GameMessageData(
-    val playerName: String,
-    val playerUuid: String,
+    val playerIdentity: PlayerIdentity,
     val messageContent: String,
     val channelName: String = "default",
-    val skinHint: SkinHint? = null,
-    val prefix: String = "",
-    val suffix: String = ""
 )
 
 data class DiscordMessageData(
@@ -24,30 +19,20 @@ data class DiscordMessageData(
 )
 
 data class PlayerJoinLeaveData(
-    val playerName: String,
-    val playerUuid: String,
-    val skinHint: SkinHint? = null,
-    val prefix: String = "",
-    val suffix: String = ""
+    val playerIdentity: PlayerIdentity,
 )
 
 data class PlayerDeathData(
-    val playerName: String,
-    val playerUuid: String,
-    val skinHint: SkinHint? = null,
+    val playerIdentity: PlayerIdentity,
     val deathMessage: String,
-    val prefix: String = "",
-    val suffix: String = "",
 )
 
 data class MCAdvancementMadeData(
-    val playerName: String,
-    val playerUuid: String,
-    val skinHint: SkinHint.Minecraft? = null,
+    val playerIdentity: PlayerIdentity.Minecraft,
     val advancementName: String,
     val advancementDescription: String,
-    val prefix: String = "",
-    val suffix: String = ""
+    val advancementType: String,
+    val actionType: String,
 )
 
 data class GameStatistics(

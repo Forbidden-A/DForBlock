@@ -17,6 +17,7 @@ data class Core(
     val serverPersonaName: String? = null,
     val serverPersonaAvatarUrl: String? = null,
     val serverPanelUrl: String? = null,
+    val playerQualifier: String,
     val minecraftAvatarProviderUrl: String? = null,
     val hytaleAvatarProviderUrl: String? = null,
 ) {

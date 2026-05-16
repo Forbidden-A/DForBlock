@@ -56,7 +56,7 @@ class DForBlockFabric : ModInitializer {
             minecraftServer = server
             adventure = MinecraftServerAudiences.of(server)
             startup = Clock.System.now()
-            communicator = FabricBlockyCommunicator(this)
+            communicator = FabricBlockyCommunicator(this, isLuckperms)
             configManager = ConfigManager(configDir, JSON)
             dForBlock = DForBlock(configManager, communicator)
             dForBlock.start()
@@ -70,44 +70,37 @@ class DForBlockFabric : ModInitializer {
 
         ServerMessageEvents.CHAT_MESSAGE.register { message, player, bound ->
             val content = message.unsignedContent()?.string ?: message.signedContent()
-            var payload = GameMessageData(
-                playerName = player.displayName.string,
-                playerUuid = player.stringUUID,
+            val payload = GameMessageData(
                 messageContent = content,
                 channelName = "default",
-                skinHint = SkinHint.Minecraft(player.stringUUID, player.name.string)
-            )
-            if (isLuckperms) {
-                payload = payload.copy(
-                    prefix = luckpermsPrefixByUUID(player.uuid),
-                    suffix = luckpermsSuffixByUUID(player.uuid)
+                playerIdentity = PlayerIdentity.Minecraft(
+                    player.uuid,
+                    player.name.string,
+                    displayName = player.displayName.string
                 )
-            }
+            )
             dForBlock.onBlockyMessageReceive(payload)
         }
 
         ServerPlayerEvents.JOIN.register { player ->
-            var payload = PlayerJoinLeaveData(player.displayName.string, playerUuid = player.stringUUID)
-            if (isLuckperms) {
-                payload = payload.copy(
-                    prefix = luckpermsPrefixByUUID(player.uuid),
-                    suffix = luckpermsSuffixByUUID(player.uuid)
+            val payload = PlayerJoinLeaveData(
+                PlayerIdentity.Minecraft(
+                    player.uuid,
+                    player.name.string,
+                    player.displayName.string
                 )
-            }
+            )
             dForBlock.onPlayerJoin(payload)
         }
 
         ServerPlayerEvents.LEAVE.register { player ->
-            var payload = PlayerJoinLeaveData(
-                player.displayName.string,
-                playerUuid = player.stringUUID,
-            )
-            if (isLuckperms) {
-                payload = payload.copy(
-                    prefix = luckpermsPrefixByUUID(player.uuid),
-                    suffix = luckpermsSuffixByUUID(player.uuid)
+            val payload = PlayerJoinLeaveData(
+                playerIdentity = PlayerIdentity.Minecraft(
+                    player.uuid,
+                    player.name.string,
+                    player.displayName.string
                 )
-            }
+            )
             dForBlock.onPlayerLeave(payload)
         }
 
@@ -115,17 +108,14 @@ class DForBlockFabric : ModInitializer {
             if (entity !is ServerPlayer)
                 return@register
 
-            var payload = PlayerDeathData(
-                playerName = entity.displayName.string,
-                playerUuid = entity.stringUUID,
+            val payload = PlayerDeathData(
+                playerIdentity = PlayerIdentity.Minecraft(
+                    entity.uuid,
+                    entity.name.string,
+                    entity.displayName.string
+                ),
                 deathMessage = source.getLocalizedDeathMessage(entity).string,
             )
-            if (isLuckperms) {
-                payload = payload.copy(
-                    prefix = luckpermsPrefixByUUID(entity.uuid),
-                    suffix = luckpermsSuffixByUUID(entity.uuid)
-                )
-            }
             dForBlock.onPlayerDeath(payload)
         }
 

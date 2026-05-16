@@ -4,6 +4,8 @@ import dev.kord.common.Color
 import dev.kord.common.entity.SeparatorSpacingSize
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 @Serializable
 data class MessagesConfig(
@@ -74,6 +76,8 @@ data class EmbedConfig(
 
     }
 }
+
+
 
 @Serializable
 data class Container(val color: Color? = null, val elements: List<ContainerElement>)

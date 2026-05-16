@@ -1,0 +1,37 @@
+{
+  // The token used to log into discord
+  //    Please ensure that you enabled "message content" intent or the messages will be empty.
+  discordToken: "<TOKEN>",
+  // The guilds to create the commands in (playerlist, panel)
+  guildIds: [],
+  // The Discord Status
+  //    Online, DoNotDisturb, Idle, Invisible/Offline
+  discordStatus: "Online",
+  // Show a thinking bubble
+  showThinkingBubble: false,
+  // The text to show
+  //    Variables: {game}, {gameVersion}, {onlinePlayers}, {playerLimit}
+  //    {mspt}, {tps}, {targetTps}, {uptime}
+  thinkingBubbleText: "Playing {game} {gameVersion} with {onlinePlayers} friends",
+  // Show a Discord activity
+  //    This conflicts with 'showThinkingBubble'.
+  showActivity: true,
+  // Playing, Listening, Watching, Competing, Streaming
+  //   If set to Streaming, 'streamUrl' becomes required.
+  activityType: "Watching",
+  streamUrl: null,
+  // The text for the activity e.g., Watching 5 players
+  //    Variables: {game}, {gameVersion}, {onlinePlayers}, {playerLimit}
+  //    {mspt}, {tps}, {targetTps}, {uptime}
+  activityText: "{onlinePlayers} playing {game} {gameVersion}",
+  // Server persona (webhook)
+  serverPersonaName: "DForBlock",
+  serverPersonaAvatarUrl: null, // Uses the default webhook icon
+  // This will be used for formatting {playerQualifiedName} in messages.json5
+  // Variables: {playerName}, {playerQualifiedName}, {prefix}, {suffix}
+  playerQualifier: "{prefix}{playerQualifiedName}{suffix}",
+  // The avatar provider urls for webhook icons
+  //    Variables: username, uuid
+  minecraftAvatarProviderUrl: "https://api.mineatar.io/head/{uuid}?scale=16",
+  hytaleAvatarProviderUrl: "https://hyvatar.io/render/{username}?size=128&rotate=22"
+}

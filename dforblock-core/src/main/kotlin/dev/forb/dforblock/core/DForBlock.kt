@@ -427,10 +427,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         val placeholders = (
                 buildCommonPlaceholders(communicator)
                         + buildPlayerPlaceholders(
-                    payload.playerName,
-                    payload.playerUuid,
-                    payload.prefix,
-                    payload.suffix
+                    payload.playerIdentity,
+                    configManager,
+                    communicator
                 )
                         + mapOf("{messageContent}" to payload.messageContent, "{channelName}" to payload.channelName)
                 )
@@ -438,8 +437,8 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, payload.skinHint,
-                configManager, placeholders, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, payload.playerIdentity,
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle game message received." }
             }
@@ -457,7 +456,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, null, configManager, placeholders, constructMessage(template, placeholders))
+            val success = channel.createMessage(kord, template, null, configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle server start event." }
             }
@@ -476,7 +475,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
 
         botScope.launch {
             val success = channel.createMessage(kord, template, null,
-                configManager, placeholders, constructMessage(template, placeholders))
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle server stop event." }
             }
@@ -491,18 +490,17 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         if (!template.isEnabled) return
 
         val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
-            payload.playerName,
-            payload.playerUuid,
-            payload.prefix,
-            payload.suffix
+            payload.playerIdentity,
+            configManager,
+            communicator
         )
         val channel = configManager.channels[template.targetChannel]
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template,  payload.skinHint,
+            val success = channel.createMessage(kord, template,  payload.playerIdentity,
 
-                configManager, placeholders, constructMessage(template, placeholders))
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player join event." }
             }
@@ -517,18 +515,17 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         if (!template.isEnabled) return
 
         val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
-            payload.playerName,
-            payload.playerUuid,
-            payload.prefix,
-            payload.suffix
+            payload.playerIdentity,
+            configManager,
+            communicator
         )
         val channel = configManager.channels[template.targetChannel]
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, payload.skinHint,
+            val success = channel.createMessage(kord, template, payload.playerIdentity,
 
-                configManager, placeholders, constructMessage(template, placeholders))
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player leave event." }
             }
@@ -545,10 +542,8 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         val placeholders = (
                 buildCommonPlaceholders(communicator)
                         + buildPlayerPlaceholders(
-                    payload.playerName,
-                    payload.playerUuid,
-                    payload.prefix,
-                    payload.suffix
+                    payload.playerIdentity,
+                            configManager, communicator
                 )
                         + mapOf("{deathMessage}" to payload.deathMessage)
                 )
@@ -556,9 +551,9 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, payload.skinHint,
+            val success = channel.createMessage(kord, template, payload.playerIdentity,
 
-                configManager, placeholders, constructMessage(template, placeholders))
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player death event." }
             }
@@ -574,24 +569,21 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
 
         val placeholders = (
                 buildCommonPlaceholders(communicator)
-                        + buildPlayerPlaceholders(
-                    payload.playerName,
-                    payload.playerUuid,
-                    payload.prefix,
-                    payload.suffix
-                )
+                        + buildPlayerPlaceholders(payload.playerIdentity, configManager, communicator)
                         + mapOf(
                     "{advancementName}" to payload.advancementName,
-                    "{advancementDescription}" to payload.advancementDescription
+                    "{advancementDescription}" to payload.advancementDescription,
+                    "{advancementType}" to payload.advancementType,
+                    "{actionType}" to payload.actionType
                 )
                 )
         val channel = configManager.channels[template.targetChannel]
             ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
         botScope.launch {
-            val success = channel.createMessage(kord, template, payload.skinHint,
+            val success = channel.createMessage(kord, template, payload.playerIdentity,
 
-                configManager, placeholders, constructMessage(template, placeholders))
+                configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {
                 LOGGER.warn { "Failed to handle player death event." }
             }

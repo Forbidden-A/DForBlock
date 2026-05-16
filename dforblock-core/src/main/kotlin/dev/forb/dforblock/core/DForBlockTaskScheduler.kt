@@ -21,19 +21,11 @@ class DForBlockTaskScheduler(
     private var updateChannelJobs: MutableSet<Job> = ConcurrentHashMap.newKeySet()
     private var updatePresenceJob: Job? = null
 
-    private fun replaceStatistics(statistics: GameStatistics, text: String): String = text
-        .replace("{game}", statistics.gameType.name)
-        .replace("{onlinePlayers}", statistics.onlinePlayers.toString())
-        .replace("{playerLimit}", statistics.playerLimit.toString())
-        .replace("{tps}", "%.2f".format(statistics.tps))
-        .replace("{targetTps}", "%.1f".format(statistics.targetTps))
-        .replace("{mspt}", "%.2f".format(statistics.mspt))
-
     private suspend fun CoroutineScope.updateChannel(channelName: String, targetChannel: ChannelConfig) {
         if (targetChannel.topicTemplate == null) { return }
 
         while (isActive) {
-            val placeholders = buildCommonPlaceholders(communicator)
+            val placeholders = buildCommonPlaceholders(communicator) + ("{channelName}" to channelName)
             val topic = targetChannel.topicTemplate.withPlaceholders(placeholders)
             val patchRequest = ChannelModifyPatchRequest(
                 topic = Optional.Value(topic)

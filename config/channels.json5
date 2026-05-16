@@ -1,15 +1,9 @@
 {
   default: {
-    // The discord channel Id
-    channelId: 123,
-    // Whether this channel supports webhooks
-    //    If this is enabled, 'webhookToken' and 'webhookId' become required
+    channelId: 1,
     allowsWebhooks: true,
-    // Webhook credentials
-    webhookToken: "abc",
-    webhookId: 123,
-    // The topic template
-    //    If this is empty the feature is disabled
+    webhookToken: "",
+    webhookId: 1,
     //    Variables: {game}, {gameVersion}, {onlinePlayers}, {playerLimit}
     //    {mspt}, {tps}, {targetTps}, {uptime}
     topicTemplate: "{game} {gameVersion} | {onlinePlayers}/{playerLimit} | {mspt}mspt @ {tps}/{targetTps}tps. Up for {uptime}."

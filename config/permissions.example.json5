@@ -1,0 +1,29 @@
+{
+  playerListCommand: {
+    allowEveryone: true,
+    allowedUsers: [],
+    allowedRoles: []
+  },
+  panelCommand: {
+    allowEveryone: false,
+    allowedUsers: [],
+    allowedRoles: []
+  },
+  playersButton: {
+    allowEveryone: true
+  },
+  statusButton: {
+    allowEveryone: true
+  },
+  stopButton: {
+    allowEveryone: false,
+    allowedRoles: []
+  },
+  runCommandsButton: {
+    allowEveryone: false
+  },
+  allowedCommands: {
+    blacklist: ["op", "stop"],
+    // whitelist: ["time"]
+  }
+}

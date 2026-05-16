@@ -29,6 +29,8 @@ dependencies {
     shadowed(libs.json5)
 
     compileOnly(libs.adventure.api)
+    compileOnly(libs.adventure.legacy)
+    compileOnly(libs.adventure.text)
     compileOnly(libs.adventure.minimessage)
     compileOnly(libs.luckperms)
     compileOnly(libs.kotlinx.coroutines)

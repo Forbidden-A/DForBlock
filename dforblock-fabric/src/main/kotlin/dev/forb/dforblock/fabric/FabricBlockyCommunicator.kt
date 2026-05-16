@@ -9,9 +9,10 @@ import net.minecraft.server.permissions.PermissionSet
 import kotlin.coroutines.resume
 import kotlin.time.Clock
 
-class FabricBlockyCommunicator(val mod: DForBlockFabric) : IBlockyCommunicator {
+class FabricBlockyCommunicator(val mod: DForBlockFabric, override val isLuckperms: Boolean) : IBlockyCommunicator {
 
     override val configDir = dev.forb.dforblock.fabric.configDir
+
 
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = mod.configManager.messages.discordUserChats ?: return

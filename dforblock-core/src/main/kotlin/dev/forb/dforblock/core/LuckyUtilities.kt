@@ -3,26 +3,15 @@ package dev.forb.dforblock.core
 import net.luckperms.api.LuckPermsProvider
 import java.util.*
 
-fun luckpermsPrefixByUUID(player: UUID): String {
+fun luckPermsQualifiedName(format: String, uuid: UUID, username: String, displayName: String?): String {
     val provider = LuckPermsProvider.get()
-    val luckyUser = provider.userManager.getUser(player) ?: return ""
-    return luckyUser.cachedData.metaData.prefix.orEmpty()
-}
-
-fun luckpermsPrefixByUsername(player: String): String {
-    val provider = LuckPermsProvider.get()
-    val luckyUser = provider.userManager.getUser(player) ?: return ""
-    return luckyUser.cachedData.metaData.prefix.orEmpty()
-}
-
-fun luckpermsSuffixByUUID(player: UUID): String {
-    val provider = LuckPermsProvider.get()
-    val luckyUser = provider.userManager.getUser(player) ?: return ""
-    return luckyUser.cachedData.metaData.suffix.orEmpty()
-}
-
-fun luckpermsSuffixByUsername(player: String): String {
-    val provider = LuckPermsProvider.get()
-    val luckyUser = provider.userManager.getUser(player) ?: return ""
-    return luckyUser.cachedData.metaData.suffix.orEmpty()
+    val luckyUser = provider.userManager.getUser(uuid) ?: return displayName ?: username
+    return format.withPlaceholders(
+        mapOf(
+            "{playerName}" to username,
+            "{playerQualifiedName}" to (displayName ?: username),
+            "{prefix}" to luckyUser.cachedData.metaData.prefix.orEmpty(),
+            "{suffix}" to luckyUser.cachedData.metaData.suffix.orEmpty()
+        )
+    )
 }

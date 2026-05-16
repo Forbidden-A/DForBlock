@@ -4,6 +4,7 @@ import dev.forb.dforblock.core.*
 import dev.forb.dforblock.fabric.DForBlockFabric
 import dev.forb.dforblock.fabric.isLuckperms
 import net.minecraft.advancements.AdvancementHolder
+import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.PlayerAdvancements
 import net.minecraft.server.level.ServerPlayer
 import org.spongepowered.asm.mixin.Mixin
@@ -33,19 +34,18 @@ open class PlayerAdvancementTrackerMixin {
         if (!displayInfo.shouldAnnounceChat())
             return
 
-        var payload = MCAdvancementMadeData(
-            playerName = player.displayName.string,
-            playerUuid = player.stringUUID,
+        val actionType = when(displayInfo.type) {
+            AdvancementType.TASK -> "made"
+            else -> "completed"
+        }
+
+        val payload = MCAdvancementMadeData(
             advancementName = displayInfo.title.string,
             advancementDescription = displayInfo.description.string,
-            skinHint = SkinHint.Minecraft(player.stringUUID, player.name.string)
+            advancementType = displayInfo.type.name.lowercase(),
+            actionType = actionType,
+            playerIdentity = PlayerIdentity.Minecraft(player.uuid, player.name.string, player.displayName.string)
         )
-        if (isLuckperms)
-            payload = payload.copy(
-                prefix = luckpermsPrefixByUUID(player.uuid),
-                suffix = luckpermsSuffixByUUID(player.uuid),
-            )
-
         DForBlockFabric.INSTANCE.dForBlock.onMinecraftAdvancement(payload)
     }
 }
