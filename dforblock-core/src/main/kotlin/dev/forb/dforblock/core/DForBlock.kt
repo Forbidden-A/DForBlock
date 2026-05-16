@@ -7,6 +7,7 @@ import dev.kord.gateway.PrivilegedIntent
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
 
 val LOGGER = KotlinLogging.logger {}
 val JSON = Json {
@@ -37,15 +38,16 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         botManager.start()
     }
 
-    fun disable() = runBlocking {
+    fun disable() = runBlocking(Dispatchers.Default) {
         if (!botManager.isInitialised) {
-            LOGGER.info { "Mod was not running, nothing to do.." }
+            botManager.botScope.coroutineContext.cancelChildren()
+            LOGGER.info { "Mod was not running, not much to do.." }
             return@runBlocking
         }
 
         LOGGER.info { "Termination requested..." }
         val stopJob = onServerStop()
-        stopJob?.join()
+        withTimeoutOrNull(5.seconds){ stopJob?.join() }
         botManager.stop()
         LOGGER.info { "DForBlock disabled." }
     }

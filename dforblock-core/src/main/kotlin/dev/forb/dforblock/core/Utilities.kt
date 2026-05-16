@@ -11,6 +11,7 @@ import dev.kord.rest.builder.component.textDisplay
 import dev.kord.rest.builder.message.MessageBuilder
 import dev.kord.rest.builder.message.container
 import dev.kord.rest.builder.message.embed
+import io.ktor.utils.io.CancellationException
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -117,7 +118,7 @@ suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, p
         }
         kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
         true
-    } catch (e: Exception) {
+    } catch (_: CancellationException) { false } catch (e: Exception) {
         LOGGER.error { "Could not create message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
         false
     }

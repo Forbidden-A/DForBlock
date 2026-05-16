@@ -17,13 +17,9 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
 
 class DiscordBotManager(
     private val dForBlock: DForBlock,
@@ -40,9 +36,17 @@ class DiscordBotManager(
     var isReady: Boolean = false
         private set
 
-    internal val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val exceptionHandler = CoroutineExceptionHandler { context, throwable ->
+        if (throwable is CancellationException || throwable.toString().contains("CancellationException")) {
+            LOGGER.debug { "Coroutine cancelled $context, ${throwable.message}\n${throwable.stackTraceToString()}" }
+        } else {
+            LOGGER.error { "Unhandled exception in botScope: ${throwable.message}\n${throwable.stackTraceToString()}" }
+        }
+    }
 
-    private val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]))
+    internal val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + exceptionHandler)
+
+    private val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]) + exceptionHandler)
 
     internal lateinit var kord: Kord
 
@@ -52,17 +56,18 @@ class DiscordBotManager(
     private lateinit var discordEventHandler: DiscordEventHandler
 
     suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
-        kord.createGuildChatInputCommand(
-            name = "playerlist",
-            description = "Get the list of online players",
-            guildId = Snowflake(guildId)
-        )
+        @Suppress("UnusedFlow")
+        kord.createGuildApplicationCommands(Snowflake(guildId)) {
+            input(
+                name = "playerlist",
+                description = "Get the list of online players"
+            )
 
-        kord.createGuildChatInputCommand(
-            name = "panel",
-            description = "Send the control panel",
-            guildId = Snowflake(guildId)
-        )
+            input(
+                name = "panel",
+                description = "Send the control panel"
+            )
+        }
     }
 
     @OptIn(PrivilegedIntent::class)
@@ -80,13 +85,14 @@ class DiscordBotManager(
                 communicator
             )
             LOGGER.info { "Logging in..." }
+            isInitialised = true
             kord.login {
                 intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
             }
-            isInitialised = true
+        } catch (_: CancellationException) {
+            isInitialised = false
         } catch (e: Exception) {
             LOGGER.error { "Failed to initialise Discord bot: ${e.message}\n${e.stackTraceToString()}" }
-            isInitialised = false
         }
     }
 
@@ -125,16 +131,20 @@ class DiscordBotManager(
     }
 
     fun stop() = runBlocking {
-        logout()
-        botScope.cancel()
+        withTimeoutOrNull(5.seconds) {
+            logout().join()
+        }
+        botScope.coroutineContext.cancelChildren()
         isReady = false
         isInitialised = false
         LOGGER.info { "Goodbye." }
     }
 
-    private suspend fun logout() {
+    private fun logout(): Job = botScope.launch {
         LOGGER.info { "Logging out..." }
+        taskScheduler.stop()
         kord.shutdown()
+        kord.resources.httpClient.close()
         LOGGER.info { "Logged out." }
         isReady = false
     }

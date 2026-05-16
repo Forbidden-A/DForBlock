@@ -62,7 +62,7 @@ class DForBlockFabric : ModInitializer {
             dForBlock.start()
         }
 
-        ServerLifecycleEvents.SERVER_STOPPING.register { _ ->
+        ServerLifecycleEvents.SERVER_STOPPED.register { _ ->
             dForBlock.disable()
             minecraftServer = null
             adventure = null
