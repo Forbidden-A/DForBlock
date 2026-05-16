@@ -2,7 +2,6 @@ package dev.forb.dforblock.fabric.mixin
 
 import dev.forb.dforblock.core.*
 import dev.forb.dforblock.fabric.DForBlockFabric
-import dev.forb.dforblock.fabric.isLuckperms
 import net.minecraft.advancements.AdvancementHolder
 import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.PlayerAdvancements
@@ -44,7 +43,7 @@ open class PlayerAdvancementTrackerMixin {
             advancementDescription = displayInfo.description.string,
             advancementType = displayInfo.type.name.lowercase(),
             actionType = actionType,
-            playerIdentity = PlayerIdentity.Minecraft(player.uuid, player.name.string, player.displayName.string)
+            playerIdentity = PlayerData.Minecraft(player.uuid, player.name.string, player.displayName.string)
         )
         DForBlockFabric.INSTANCE.dForBlock.onMinecraftAdvancement(payload)
     }

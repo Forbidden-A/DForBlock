@@ -133,13 +133,18 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         isReady = false
     }
 
-    fun disable() {
-        if (!isInitialised)
-            return LOGGER.info { "Instance is not initialised, nothing to do.." }
+    fun disable() = runBlocking {
+        if (!isInitialised) {
+            LOGGER.info { "Mod was not running, nothing to do.." }
+            return@runBlocking
+        }
+
         LOGGER.info { "Termination requested..." }
         taskScheduler.stop()
-        onServerStop()
-        botScope.launch { logout() }
+        val stopJob = onServerStop()
+        stopJob?.join()
+        logout()
+        botScope.cancel()
         isInitialised = false
         LOGGER.info { "DForBlock disabled." }
     }
@@ -463,17 +468,22 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         }
     }
 
-    fun onServerStop() {
-        if (!isReady)
-            return LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
+    fun onServerStop(): Job? {
+        if (!isReady) {
+            LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
+            return null
+        }
 
-        val template = configManager.messages.serverStops ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.serverStops ?: return null
+        if (!template.isEnabled) return null
         val placeholders = buildCommonPlaceholders(communicator)
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: run {
+                LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+                return null
+            }
 
-        botScope.launch {
+        return botScope.launch {
             val success = channel.createMessage(kord, template, null,
                 configManager, communicator, placeholders, constructMessage(template, placeholders))
             if (!success) {

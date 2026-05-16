@@ -50,17 +50,19 @@ fun String.withoutMinecraftFormatting(): String {
 }
 
 fun String.withPlaceholders(placeholders: Map<String, String>?): String {
-    if (placeholders.isNullOrEmpty())
+    if (placeholders.isNullOrEmpty() || !this.contains("{")) {
         return this
+    }
 
     var result = this
     for ((key, value) in placeholders) {
-        result = result.replace(key, value)
+        if (result.contains(key)) {
+            result = result.replace(key, value)
+        }
     }
 
     return result
 }
-
 fun String.withPlaceholders(vararg placeholders: Pair<String, String>): String = withPlaceholders(mapOf(*placeholders))
 
 fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
@@ -78,7 +80,7 @@ fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
 
 fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> = buildCommonPlaceholders(communicator.serverStatistics())
 
-fun buildPlayerPlaceholders(playerIdentity: PlayerIdentity, configManager: ConfigManager, communicator: IBlockyCommunicator): Map<String, String> {
+fun buildPlayerPlaceholders(playerIdentity: PlayerData, configManager: ConfigManager, communicator: IBlockyCommunicator): Map<String, String> {
     return mapOf(
         "{playerName}" to playerIdentity.name,
         "{playerDisplayName}" to (playerIdentity.displayName ?: ""),
@@ -99,7 +101,7 @@ fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String
     return miniMessage.deserialize(processedString)
 }
 
-suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, playerIdentity: PlayerIdentity?, configManager: ConfigManager, communicator: IBlockyCommunicator,
+suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, playerIdentity: PlayerData?, configManager: ConfigManager, communicator: IBlockyCommunicator,
                                         placeholders: Map<String, String>? = null, messageBuilder: MessageBuilder.() -> Unit): Boolean {
     return try {
         if (template.asWebhook) {

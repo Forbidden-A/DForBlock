@@ -73,7 +73,7 @@ class DForBlockFabric : ModInitializer {
             val payload = GameMessageData(
                 messageContent = content,
                 channelName = "default",
-                playerIdentity = PlayerIdentity.Minecraft(
+                playerIdentity = PlayerData.Minecraft(
                     player.uuid,
                     player.name.string,
                     displayName = player.displayName.string
@@ -84,7 +84,7 @@ class DForBlockFabric : ModInitializer {
 
         ServerPlayerEvents.JOIN.register { player ->
             val payload = PlayerJoinLeaveData(
-                PlayerIdentity.Minecraft(
+                PlayerData.Minecraft(
                     player.uuid,
                     player.name.string,
                     player.displayName.string
@@ -95,7 +95,7 @@ class DForBlockFabric : ModInitializer {
 
         ServerPlayerEvents.LEAVE.register { player ->
             val payload = PlayerJoinLeaveData(
-                playerIdentity = PlayerIdentity.Minecraft(
+                playerIdentity = PlayerData.Minecraft(
                     player.uuid,
                     player.name.string,
                     player.displayName.string
@@ -109,7 +109,7 @@ class DForBlockFabric : ModInitializer {
                 return@register
 
             val payload = PlayerDeathData(
-                playerIdentity = PlayerIdentity.Minecraft(
+                playerIdentity = PlayerData.Minecraft(
                     entity.uuid,
                     entity.name.string,
                     entity.displayName.string

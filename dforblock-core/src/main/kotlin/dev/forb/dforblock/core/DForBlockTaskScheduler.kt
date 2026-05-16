@@ -99,6 +99,7 @@ class DForBlockTaskScheduler(
         updateChannelJobs = emptySet()
         updatePresenceJob = null
         schedulerScope.coroutineContext.cancelChildren()
+        schedulerScope.cancel()
         LOGGER.info { "All jobs cancelled." }
     }
 
