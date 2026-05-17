@@ -1,9 +1,28 @@
 {
-  playerListCommand: { allowEveryone: true },
-  panelCommand: { allowedRoles: [] },
-  playersButton: { allowEveryone: true },
-  statusButton: { allowEveryone: true },
-  stopButton: { allowedRoles: [] },
-  runCommandsButton: { allowedRoles: [] },
-  allowedCommands: { blacklist: ["op", "stop", "execute", "reload"] }
+  playerListCommand: {
+    allowEveryone: true
+  },
+  panelCommand: {
+    allowedRoles: []
+  },
+  playersButton: {
+    allowEveryone: true
+  },
+  statusButton: {
+    allowEveryone: true
+  },
+  stopButton: {
+    allowedRoles: []
+  },
+  runCommandsButton: {
+    allowedRoles: []
+  },
+  allowedCommands: {
+    blacklist: [
+      "op",
+      "stop",
+      "execute",
+      "reload"
+    ]
+  }
 }

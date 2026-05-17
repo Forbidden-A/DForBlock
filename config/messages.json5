@@ -61,5 +61,12 @@
     standard: {
       content: "```txt\n{batch}```"
     }
+  },
+  serverWatchdog: {
+    asWebhook: true,
+    webhookPersonaName: "Server Watchdog",
+    standard: {
+      content: ":fire::fire::fire: @staff Server is on fire :fire::fire::fire:"
+    }
   }
 }

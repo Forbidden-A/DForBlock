@@ -43,7 +43,8 @@ class DiscordBotManager(
 
     val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + exceptionHandler)
 
-    val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]) + exceptionHandler)
+    val taskScope =
+        CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]) + exceptionHandler)
 
     var kord: Kord? = null
         private set
@@ -79,7 +80,7 @@ class DiscordBotManager(
             kord?.login {
                 intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
             } ?: LOGGER.error { "Setup was called but Kord was not setup." }
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             if (e !is CancellationException)
                 LOGGER.error { "Failed to initialise Discord bot: ${e.message}\n${e.stackTraceToString()}" }
 
@@ -111,13 +112,13 @@ class DiscordBotManager(
                 kord.on<MessageCreateEvent> { onDiscordMessageReceive() }
 
                 kord.on<DisconnectEvent> { LOGGER.info { "Gateway disconnected." } }
-        }
+            }
             taskScheduler = DiscordTaskScheduler(taskScope, configManager, kord, communicator)
         }
         isInitialised = true
     }
 
-    suspend fun stop()  {
+    suspend fun stop() {
         LOGGER.info { "Logging out..." }
         if (configManager.messages.serverLogs != null && LogtoDiscordHandler.logQueue.isNotEmpty()) {
             val batch = LogtoDiscordHandler.flush()

@@ -20,6 +20,8 @@ data class Core(
     val playerQualifier: String,
     val minecraftAvatarProviderUrl: String? = null,
     val hytaleAvatarProviderUrl: String? = null,
+    val watchdogTimeout: Int = 30,
+    val watchdogInterval: Int = 2,
 ) {
 
     enum class RichPresenceType {

@@ -10,9 +10,9 @@
   //        {playerName}, {playerDisplayName}, {playerQualifiedName}, {playerUuid}, {playerAvatar}
   playerChats: {
     // Special Variables: {messageContent}, {channelName}
-    isEnabled: true, // true is the default
-    targetChannel: "default", // 'default' is the default
-    asWebhook: true, // false is the default
+    isEnabled: true,  // true is the default
+    targetChannel: "default",  // 'default' is the default
+    asWebhook: true,  // false is the default
     webhookPersonaName: null,
     webhookPersonaAvatarUrl: null,
     // A message which uses components v2 (container instead of embed)
@@ -85,6 +85,21 @@
   serverStops: {
     standard: {
       content: "**Server has stopped.**"
+    }
+  },
+  serverLogs: {
+    // Variables: {batch} ~1900 chars in length
+    asWebhook: true,
+    targetChannel: "logChannel",
+    standard: {
+      content: "```txt\n{batch}```"
+    }
+  },
+  serverWatchdog: {
+    // No variables.
+    asWebhook: true,
+    standard: {
+      content: ":fire::fire::fire: @staff Server is on fire :fire::fire::fire:"
     }
   }
 }

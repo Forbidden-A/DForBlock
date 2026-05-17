@@ -4,14 +4,13 @@ import dev.kord.common.Color
 import dev.kord.common.entity.SeparatorSpacingSize
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.random.Random
-import kotlin.random.nextInt
 
 @Serializable
 data class MessagesConfig(
     val serverStarts: MessageTemplate? = null,
     val serverStops: MessageTemplate? = null,
     val serverLogs: MessageTemplate? = null,
+    val serverWatchdog: MessageTemplate? = null,
     val playerJoins: MessageTemplate? = null,
     val playerLeaves: MessageTemplate? = null,
     val playerDies: MessageTemplate? = null,
@@ -79,7 +78,6 @@ data class EmbedConfig(
 }
 
 
-
 @Serializable
 data class Container(val color: Color? = null, val elements: List<ContainerElement>)
 
@@ -92,4 +90,7 @@ data class ContainerElementTextDisplay(val text: String) : ContainerElement()
 
 @Serializable
 @SerialName("separator")
-data class ContainerElementSeparator(val spacingSize: SeparatorSpacingSize? = SeparatorSpacingSize.Small, val divider: Boolean? = null): ContainerElement()
+data class ContainerElementSeparator(
+    val spacingSize: SeparatorSpacingSize? = SeparatorSpacingSize.Small,
+    val divider: Boolean? = null
+) : ContainerElement()

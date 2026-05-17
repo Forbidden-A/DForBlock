@@ -1,6 +1,7 @@
 package dev.forb.dforblock.fabric.mixin
 
-import dev.forb.dforblock.core.*
+import dev.forb.dforblock.core.MCAdvancementMadeData
+import dev.forb.dforblock.core.PlayerData
 import dev.forb.dforblock.fabric.DForBlockFabric
 import net.minecraft.advancements.AdvancementHolder
 import net.minecraft.advancements.AdvancementType
@@ -18,7 +19,13 @@ open class PlayerAdvancementTrackerMixin {
     @Shadow
     lateinit var player: ServerPlayer
 
-    @Inject(method = ["award"], at = [At(value = "INVOKE", target = "Lnet/minecraft/advancements/AdvancementRewards;grant(Lnet/minecraft/server/level/ServerPlayer;)V")])
+    @Inject(
+        method = ["award"],
+        at = [At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/advancements/AdvancementRewards;grant(Lnet/minecraft/server/level/ServerPlayer;)V"
+        )]
+    )
     private fun onAdvancementGain(
         holder: AdvancementHolder,
         criterion: String,
@@ -33,7 +40,7 @@ open class PlayerAdvancementTrackerMixin {
         if (!displayInfo.shouldAnnounceChat())
             return
 
-        val actionType = when(displayInfo.type) {
+        val actionType = when (displayInfo.type) {
             AdvancementType.TASK -> "made"
             else -> "completed"
         }

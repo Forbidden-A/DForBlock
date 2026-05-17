@@ -1,21 +1,18 @@
 package dev.forb.dforblock.core.discord
 
-import dev.forb.dforblock.core.IBlockyCommunicator
-import dev.forb.dforblock.core.LOGGER
-import dev.forb.dforblock.core.buildCommonPlaceholders
+import dev.forb.dforblock.core.*
 import dev.forb.dforblock.core.config.ChannelConfig
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.config.Core
-import dev.forb.dforblock.core.withPlaceholders
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
-import jdk.internal.net.http.common.Log.channel
 import kotlinx.coroutines.*
 import java.util.Collections.emptySet
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class DiscordTaskScheduler(
     internal val schedulerScope: CoroutineScope,
@@ -25,6 +22,8 @@ class DiscordTaskScheduler(
 ) {
     private var updateChannelJobs: MutableSet<Job> = ConcurrentHashMap.newKeySet()
     private var updatePresenceJob: Job? = null
+
+    private var watchdogJob: Job? = null
 
     private suspend fun CoroutineScope.updateChannel(channelName: String, targetChannel: ChannelConfig) {
         try {
@@ -97,12 +96,62 @@ class DiscordTaskScheduler(
         }
     }
 
+    private val watchdogBlock: suspend CoroutineScope.() -> Unit = {
+        try {
+            var isDead = false
+            while (isActive) {
+                delay(configManager.core.watchdogInterval.minutes)
+                LOGGER.info { "Checking heartbeat with a timeout of ${configManager.core.watchdogTimeout} second(s)..." }
+                try {
+                    val isAlive =
+                        withTimeoutOrNull(configManager.core.watchdogTimeout.seconds) { communicator.heartbeat() }
+                    when (isAlive) {
+                        true -> {
+                            isDead = false
+                            LOGGER.info { "Server is alive." }
+                        }
+
+                        else -> {
+                            if (isDead)
+                                continue
+                            val template = configManager.messages.serverWatchdog
+                            if (template == null) {
+                                LOGGER.error { "Watchdog task ran but message template is null?" }
+                                break
+                            }
+                            val targetChannel = configManager.channels[template.targetChannel]
+                            if (targetChannel == null) {
+                                LOGGER.warn { "Could not find channel '${template.targetChannel}' for server watchdog." }
+                                break
+                            }
+                            targetChannel.createMessage(kord, template, null, configManager, communicator, emptyMap())
+                            isDead = true
+                            LOGGER.info { "Server is not responding..." }
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    LOGGER.error { "Failed heartbeat! ${e.message}\n${e.stackTraceToString()}" }
+                }
+            }
+        } catch (_: CancellationException) {
+            LOGGER.info { "Watchdog task successfully cancelled." }
+        }
+    }
+
     fun start() {
         configManager.messages.serverLogs?.let { template ->
             configManager.channels[template.targetChannel]?.let { targetChannel ->
                 LogtoDiscordHandler.startFlushing(schedulerScope, kord, template, targetChannel)
                 LOGGER.info { "Started sending log batches in channel '${template.targetChannel}'." }
-            } ?: LOGGER.warn { "Could not start find channel '${template.targetChannel}' for server logs." }
+            } ?: LOGGER.warn { "Could not find channel '${template.targetChannel}' for server logs." }
+        }
+
+        configManager.messages.serverWatchdog?.let { template ->
+            configManager.channels[template.targetChannel]?.also {
+                watchdogJob = schedulerScope.launch(block = watchdogBlock)
+                LOGGER.info { "Started watchdog job in channel '${template.targetChannel}'." }
+            } ?: LOGGER.warn { "Could not find channel '${template.targetChannel}' for server watchdog." }
         }
 
         if (configManager.core.showActivity || configManager.core.showThinkingBubble) {
@@ -116,12 +165,13 @@ class DiscordTaskScheduler(
                 LOGGER.info { "Started update channel job for channel '$name' with id '${channel.channelId}'." }
             }
         }
-
     }
 
     fun stop() {
         updatePresenceJob?.cancel()
         updatePresenceJob = null
+        watchdogJob?.cancel()
+        watchdogJob = null
         updateChannelJobs.forEach { it.cancel() }
         updateChannelJobs = emptySet()
         LOGGER.info { "Stopping log batching job." }

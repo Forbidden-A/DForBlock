@@ -1,11 +1,11 @@
 package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.*
-import dev.forb.dforblock.core.config.ConfigManager
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.minecraft.commands.CommandSource
 import net.minecraft.network.chat.Component
 import net.minecraft.server.permissions.PermissionSet
+import java.util.concurrent.RejectedExecutionException
 import kotlin.coroutines.resume
 import kotlin.time.Clock
 
@@ -13,10 +13,23 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric, override val isLuckperm
 
     override val configDir = dev.forb.dforblock.fabric.configDir
 
+    override suspend fun heartbeat(): Boolean = suspendCancellableCoroutine { continuation ->
+        if (mod.minecraftServer == null && continuation.isActive)
+            return@suspendCancellableCoroutine continuation.resume(false)
+
+        try {
+            mod.minecraftServer?.executeIfPossible {
+                if (continuation.isActive) continuation.resume(true)
+            }
+        } catch (_: RejectedExecutionException) { // Server is already stopping
+            if (continuation.isActive) continuation.resume(true)
+        }
+    }
 
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = mod.configManager.messages.discordUserChats ?: return
-        val channel = mod.configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId } ?: return
+        val channel =
+            mod.configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId } ?: return
         val kyoriComponent = prepareMinecraftMiniMessage(payload, channel.key, template)
         mod.adventure?.players()?.sendMessage(kyoriComponent)
             ?: return LOGGER.error { "Unexpected state, 'adventure is null', please report this.." }
@@ -62,11 +75,13 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric, override val isLuckperm
     }
 
     override fun stopServer() {
-        mod.minecraftServer?.halt(false) ?: return LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
+        mod.minecraftServer?.halt(false)
+            ?: return LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." }
     }
 
     override suspend fun executeCommand(command: String): String {
-        val minecraftServer = mod.minecraftServer ?: return "".apply { LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
+        val minecraftServer = mod.minecraftServer
+            ?: return "".apply { LOGGER.error { "Unexpected state, 'minecraftServer is null', please report this.." } }
 
         return suspendCancellableCoroutine { continuation ->
             minecraftServer.execute {
@@ -77,6 +92,7 @@ class FabricBlockyCommunicator(val mod: DForBlockFabric, override val isLuckperm
                         builder.append(message.string).append("\n")
                         minecraftServer.sendSystemMessage(message)
                     }
+
                     override fun acceptsSuccess(): Boolean = true
                     override fun acceptsFailure(): Boolean = true
                     override fun shouldInformAdmins(): Boolean = true

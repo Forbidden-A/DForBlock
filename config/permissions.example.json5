@@ -23,7 +23,10 @@
     allowEveryone: false
   },
   allowedCommands: {
-    blacklist: ["op", "stop"],
+    blacklist: [
+      "op",
+      "stop"
+    ],
     // whitelist: ["time"]
   }
 }

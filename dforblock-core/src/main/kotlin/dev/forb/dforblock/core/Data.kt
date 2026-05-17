@@ -1,7 +1,7 @@
 package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.ConfigManager
-import java.util.UUID
+import java.util.*
 import kotlin.time.Instant
 
 data class GameMessageData(
@@ -27,7 +27,12 @@ sealed class PlayerData {
 
     fun qualifiedName(configManager: ConfigManager, communicator: IBlockyCommunicator): String {
         if (communicator.isLuckperms) {
-            return luckPermsQualifiedName(configManager.core.playerQualifier, uuid, name, displayName).withoutMinecraftFormatting()
+            return luckPermsQualifiedName(
+                configManager.core.playerQualifier,
+                uuid,
+                name,
+                displayName
+            ).withoutMinecraftFormatting()
         }
 
         val placeholders = mapOf(
@@ -40,13 +45,17 @@ sealed class PlayerData {
 
         return configManager.core.playerQualifier.withPlaceholders(placeholders)
     }
+
     fun buildAvatarUrl(configManager: ConfigManager): String? = when (this) {
         is Hytale -> configManager.core.minecraftAvatarProviderUrl
         is Minecraft -> configManager.core.minecraftAvatarProviderUrl
     }?.withPlaceholders("{username}" to name, "{uuid}" to uuid.toString())
 
-    data class Minecraft(override val uuid: UUID, override val name: String, override val displayName: String?) : PlayerData()
-    data class Hytale(override val uuid: UUID, override val name: String, override val displayName: String?) : PlayerData()
+    data class Minecraft(override val uuid: UUID, override val name: String, override val displayName: String?) :
+        PlayerData()
+
+    data class Hytale(override val uuid: UUID, override val name: String, override val displayName: String?) :
+        PlayerData()
 }
 
 data class PlayerJoinLeaveData(
@@ -76,7 +85,7 @@ data class GameStatistics(
     val tps: Double,
     val mspt: Double,
 ) {
-    enum class GameType{
+    enum class GameType {
         Minecraft, Hytale
     }
 }

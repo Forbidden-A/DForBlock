@@ -9,5 +9,7 @@
   playerQualifier: "{prefix}{playerQualifiedName}{suffix}",
   //    Variables: username, uuid
   minecraftAvatarProviderUrl: "https://api.mineatar.io/head/{uuid}?scale=16",
-  hytaleAvatarProviderUrl: "https://hyvatar.io/render/{username}?size=128&rotate=22"
+  hytaleAvatarProviderUrl: "https://hyvatar.io/render/{username}?size=128&rotate=22",
+  watchdogTimeout: 30, // 30 seconds
+  watchdogInterval: 2 // 2 minutes
 }

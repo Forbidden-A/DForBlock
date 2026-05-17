@@ -1,7 +1,5 @@
 package dev.forb.dforblock.core
 
-import dev.forb.dforblock.core.config.ConfigManager
-import java.io.File
 import java.nio.file.Path
 
 interface IBlockyCommunicator {
@@ -9,6 +7,8 @@ interface IBlockyCommunicator {
     val configDir: Path
 
     val isLuckperms: Boolean
+
+    suspend fun heartbeat(): Boolean
 
     fun broadcastMessage(payload: DiscordMessageData)
 
