@@ -2,7 +2,6 @@ package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.discord.DiscordBotManager
-import dev.kord.common.entity.*
 import dev.kord.gateway.PrivilegedIntent
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
@@ -22,7 +21,7 @@ val JSON = Json {
 *  */
 class DForBlock(private val configManager: ConfigManager, private val communicator: IBlockyCommunicator) {
 
-    lateinit var botManager: DiscordBotManager
+    var botManager: DiscordBotManager? = null
         private set
 
     @OptIn(PrivilegedIntent::class)
@@ -35,20 +34,22 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         if (!isConfigLoaded)
             return LOGGER.error { "Start up halted: Failed to load config file." }
 
-        botManager.start()
+        botManager?.start() ?: LOGGER.error { "Failed to start DForBlock, botManager was null." }
     }
 
     fun disable() = runBlocking(Dispatchers.Default) {
-        if (!botManager.isInitialised) {
-            botManager.botScope.coroutineContext.cancelChildren()
+        if (!(botManager?.isInitialised ?: false)) {
+            botManager?.botScope?.coroutineContext?.cancelChildren()
+                ?: LOGGER.error { "Disable called but botManager is null." }
             LOGGER.info { "Mod was not running, not much to do.." }
             return@runBlocking
         }
 
         LOGGER.info { "Termination requested..." }
         val stopJob = onServerStop()
-        withTimeoutOrNull(5.seconds){ stopJob?.join() }
-        botManager.stop()
+        withTimeoutOrNull(10.seconds) { stopJob?.join() }
+        botManager?.stop()
+        botManager = null
         LOGGER.info { "DForBlock disabled." }
     }
 
@@ -56,12 +57,12 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
      * Game Event Handlers
      */
 
-    fun onBlockyMessageReceive(payload: GameMessageData) {
+    fun onBlockyMessageReceive(payload: GameMessageData) = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to handle message before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to handle game message before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.playerChats ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.playerChats ?: return@let
+        if (!template.isEnabled) return@let
 
         val placeholders = (
                 buildCommonPlaceholders(communicator)
@@ -73,65 +74,90 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
                         + mapOf("{messageContent}" to payload.messageContent, "{channelName}" to payload.channelName)
                 )
         val channel = configManager.channels[payload.channelName] ?: configManager.channels[template.targetChannel]
-        ?: return LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
+        ?: return@let LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, payload.playerIdentity,
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle game message received." }
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord, template, payload.playerIdentity,
+                    configManager, communicator, placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle game message." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle game message but kord is null." }
+    } ?: LOGGER.error { "Tried to handle game message but botManager is null." }
 
-    fun onServerStart() {
+    fun onServerStart() = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to send startup message before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to send startup message before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.serverStarts ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.serverStarts ?: return@let
+        if (!template.isEnabled) return@let
         val placeholders = buildCommonPlaceholders(communicator)
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, null, configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle server start event." }
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord,
+                    template,
+                    null,
+                    configManager,
+                    communicator,
+                    placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle server start event." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle server start event but kord is null." }
+    } ?: LOGGER.error { "Tried to handle server start event but botManager is null." }
 
     fun onServerStop(): Job? {
-        if (!botManager.isReady) {
-            LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
+        if (botManager == null) {
+            LOGGER.error { "Tried to handle server stop event but botManager is null." }
             return null
         }
 
-        val template = configManager.messages.serverStops ?: return null
-        if (!template.isEnabled) return null
-        val placeholders = buildCommonPlaceholders(communicator)
-        val channel = configManager.channels[template.targetChannel]
-            ?: run {
-                LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+        botManager?.let { botManager ->
+            if (!botManager.isReady) {
+                LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
                 return null
             }
 
-        return botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, null,
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle server stop event." }
-            }
-        }
+            val template = configManager.messages.serverStops ?: return null
+            if (!template.isEnabled) return null
+            val placeholders = buildCommonPlaceholders(communicator)
+            val channel = configManager.channels[template.targetChannel]
+                ?: run {
+                    LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+                    return null
+                }
+            botManager.kord?.let { kord ->
+                return botManager.botScope.launch {
+                    val success = channel.createMessage(
+                        kord, template, null,
+                        configManager, communicator, placeholders
+                    )
+                    if (!success) {
+                        LOGGER.warn { "Failed to handle server stop event." }
+                    }
+                }
+            } ?: LOGGER.error { "Tried to handle server stop event but kord is null." }
+        } ?: LOGGER.error { "Tried to handle server stop event but botManager is null." }
+
+        return null
     }
 
-    fun onPlayerJoin(payload: PlayerJoinLeaveData) {
+    fun onPlayerJoin(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to handle player join before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to handle player join before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.playerJoins ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.playerJoins ?: return@let
+        if (!template.isEnabled) return@let
 
         val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
             payload.playerIdentity,
@@ -139,24 +165,28 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             communicator
         )
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template,  payload.playerIdentity,
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord, template, payload.playerIdentity,
 
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle player join event." }
+                    configManager, communicator, placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle player join event." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle player join event but kord is null." }
+    } ?: LOGGER.error { "Tried to handle player join event but botManager is null." }
 
-    fun onPlayerLeave(payload: PlayerJoinLeaveData) {
+    fun onPlayerLeave(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to handle player leave before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to handle player leave before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.playerLeaves ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.playerLeaves ?: return@let
+        if (!template.isEnabled) return@let
 
         val placeholders = buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
             payload.playerIdentity,
@@ -164,52 +194,58 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
             communicator
         )
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord, template, payload.playerIdentity,
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, payload.playerIdentity,
-
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle player leave event." }
+                    configManager, communicator, placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle player leave event." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle player leave event but kord is null." }
+    } ?: LOGGER.error { "Tried to handle player leave event but botManager is null." }
 
-    fun onPlayerDeath(payload: PlayerDeathData) {
+    fun onPlayerDeath(payload: PlayerDeathData) = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to handle player death before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to handle player death before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.playerDies ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.playerDies ?: return@let
+        if (!template.isEnabled) return@let
 
         val placeholders = (
                 buildCommonPlaceholders(communicator)
                         + buildPlayerPlaceholders(
                     payload.playerIdentity,
-                            configManager, communicator
+                    configManager, communicator
                 )
                         + mapOf("{deathMessage}" to payload.deathMessage)
                 )
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord, template, payload.playerIdentity,
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, payload.playerIdentity,
-
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle player death event." }
+                    configManager, communicator, placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle player death event." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle player death event but kord is null." }
+    } ?: LOGGER.error { "Tried to handle player death event but botManager is null." }
 
-    fun onMinecraftAdvancement(payload: MCAdvancementMadeData) {
+    fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botManager?.let { botManager ->
         if (!botManager.isReady)
-            return LOGGER.warn { "Attempted to handle mc player advancement before discord is ready, message will not be sent." }
+            return@let LOGGER.warn { "Attempted to handle mc player advancement before discord is ready, message will not be sent." }
 
-        val template = configManager.messages.mcPlayerAdvances ?: return
-        if (!template.isEnabled) return
+        val template = configManager.messages.mcPlayerAdvances ?: return@let
+        if (!template.isEnabled) return@let
 
         val placeholders = (
                 buildCommonPlaceholders(communicator)
@@ -222,16 +258,19 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
                 )
                 )
         val channel = configManager.channels[template.targetChannel]
-            ?: return LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+            ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
+        botManager.kord?.let { kord ->
+            botManager.botScope.launch {
+                val success = channel.createMessage(
+                    kord, template, payload.playerIdentity,
 
-        botManager.botScope.launch {
-            val success = channel.createMessage(botManager.kord, template, payload.playerIdentity,
-
-                configManager, communicator, placeholders, constructMessage(template, placeholders))
-            if (!success) {
-                LOGGER.warn { "Failed to handle player death event." }
+                    configManager, communicator, placeholders
+                )
+                if (!success) {
+                    LOGGER.warn { "Failed to handle mc player advancement event." }
+                }
             }
-        }
-    }
+        } ?: LOGGER.error { "Tried to handle mc player advancement event but kord is null." }
+    } ?: LOGGER.error { "Tried to handle mc player advancement but kord is null." }
 
 }

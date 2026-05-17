@@ -101,5 +101,4 @@ Please use the default config files available in the config folder for reference
 
 ## 🛠️ TODO
 * **Discord Developer Panel:** Include images detailing bot creation and intent selection
-* **In-game Console:** Add Game console -> Discord Channel feature (Read-Only game console in Discord)
 * **Server Watchdog:** Add optional Watchdog messages where are sent to a target channel if the server becomes unresponsive for X seconds. 

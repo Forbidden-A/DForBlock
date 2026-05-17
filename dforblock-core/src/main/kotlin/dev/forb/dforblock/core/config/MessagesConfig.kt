@@ -11,6 +11,7 @@ import kotlin.random.nextInt
 data class MessagesConfig(
     val serverStarts: MessageTemplate? = null,
     val serverStops: MessageTemplate? = null,
+    val serverLogs: MessageTemplate? = null,
     val playerJoins: MessageTemplate? = null,
     val playerLeaves: MessageTemplate? = null,
     val playerDies: MessageTemplate? = null,

@@ -4,6 +4,7 @@ import dev.forb.dforblock.core.DForBlock
 import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.config.ConfigManager
+import dev.forb.dforblock.core.constructMessage
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.DisconnectEvent
@@ -18,7 +19,6 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import kotlinx.coroutines.*
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
 class DiscordBotManager(
@@ -26,9 +26,6 @@ class DiscordBotManager(
     private val configManager: ConfigManager,
     private val communicator: IBlockyCommunicator,
 ) {
-    /**
-     * Variables
-     */
 
     var isInitialised: Boolean = false
         private set
@@ -44,16 +41,19 @@ class DiscordBotManager(
         }
     }
 
-    internal val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + exceptionHandler)
+    val botScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + exceptionHandler)
 
-    private val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]) + exceptionHandler)
+    val taskScope = CoroutineScope(Dispatchers.Default + SupervisorJob(botScope.coroutineContext[Job]) + exceptionHandler)
 
-    internal lateinit var kord: Kord
-
-    lateinit var taskScheduler: DiscordTaskScheduler
+    var kord: Kord? = null
         private set
 
-    private lateinit var discordEventHandler: DiscordEventHandler
+    var taskScheduler: DiscordTaskScheduler? = null
+        private set
+
+    var discordEventHandler: DiscordEventHandler? = null
+        private set
+
 
     suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
         @Suppress("UnusedFlow")
@@ -70,83 +70,87 @@ class DiscordBotManager(
         }
     }
 
-    @OptIn(PrivilegedIntent::class)
-    fun start() = botScope.launch { login() }
-
     @PrivilegedIntent
-    private suspend fun login() {
+    fun start() = botScope.launch {
         try {
             LOGGER.info { "Setting up DForBlock..." }
             setup()
-            taskScheduler = DiscordTaskScheduler(
-                taskScope,
-                configManager,
-                kord,
-                communicator
-            )
             LOGGER.info { "Logging in..." }
-            isInitialised = true
-            kord.login {
+            kord?.login {
                 intents = Intents.NON_PRIVILEGED + Intents(Intent.MessageContent)
-            }
-        } catch (_: CancellationException) {
+            } ?: LOGGER.error { "Setup was called but Kord was not setup." }
+        }  catch (e: Exception) {
+            if (e !is CancellationException)
+                LOGGER.error { "Failed to initialise Discord bot: ${e.message}\n${e.stackTraceToString()}" }
+
             isInitialised = false
-        } catch (e: Exception) {
-            LOGGER.error { "Failed to initialise Discord bot: ${e.message}\n${e.stackTraceToString()}" }
+            isReady = false
         }
     }
 
     private suspend fun setup() {
-        kord = Kord(configManager.core.discordToken) {
-            enableShutdownHook = true
-        }
-
-        for (guildId in configManager.core.guildIds) {
-            createGuildCommands(kord, guildId)
-        }
-
-        discordEventHandler = DiscordEventHandler(configManager, communicator)
-
-        with(discordEventHandler) {
-            kord.on<ReadyEvent> {
-                isReady = true
-                LOGGER.info { "DForBlock is now ready." }
-                taskScheduler.start()
-                dForBlock.onServerStart()
+        kord = Kord(configManager.core.discordToken).also { kord ->
+            for (guildId in configManager.core.guildIds) {
+                LOGGER.info { "Creating commands in guild with Id '$guildId'" }
+                createGuildCommands(kord, guildId)
             }
+            discordEventHandler = DiscordEventHandler(configManager, communicator).apply {
+                kord.on<ReadyEvent> {
+                    isReady = true
+                    LOGGER.info { "DForBlock is now ready." }
+                    taskScheduler?.start() ?: LOGGER.error { "Kord is ready but taskScheduler is null." }
+                    dForBlock.onServerStart()
+                }
 
-            kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand() }
+                kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand() }
 
-            kord.on<GuildButtonInteractionCreateEvent> { onDiscordButtonPress() }
+                kord.on<GuildButtonInteractionCreateEvent> { onDiscordButtonPress() }
 
-            kord.on<GuildModalSubmitInteractionCreateEvent> { onDiscordModalSubmit() }
+                kord.on<GuildModalSubmitInteractionCreateEvent> { onDiscordModalSubmit() }
 
-            kord.on<MessageCreateEvent> { onDiscordMessageReceive() }
+                kord.on<MessageCreateEvent> { onDiscordMessageReceive() }
 
-            kord.on<DisconnectEvent> {
-                LOGGER.info { "Gateway disconnected." }
-            }
-
+                kord.on<DisconnectEvent> { LOGGER.info { "Gateway disconnected." } }
         }
+            taskScheduler = DiscordTaskScheduler(taskScope, configManager, kord, communicator)
+        }
+        isInitialised = true
     }
 
-    fun stop() = runBlocking {
-        withTimeoutOrNull(5.seconds) {
-            logout().join()
-        }
-        botScope.coroutineContext.cancelChildren()
-        isReady = false
-        isInitialised = false
-        LOGGER.info { "Goodbye." }
-    }
-
-    private fun logout(): Job = botScope.launch {
+    suspend fun stop()  {
         LOGGER.info { "Logging out..." }
-        taskScheduler.stop()
-        kord.shutdown()
-        kord.resources.httpClient.close()
+        if (configManager.messages.serverLogs != null && LogtoDiscordHandler.logQueue.isNotEmpty()) {
+            val batch = LogtoDiscordHandler.flush()
+            if (!batch.isNullOrBlank()) {
+                kord?.apply {
+                    val template = configManager.messages.serverLogs
+                    if (template != null) {
+                        val targetChannel = configManager.channels[template.targetChannel]
+                        targetChannel?.let { targetChannel ->
+                            rest.channel.createMessage(
+                                Snowflake(targetChannel.channelId),
+                                constructMessage(template, mapOf("{batch}" to batch))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        taskScheduler?.stop() ?: LOGGER.error { "Stop called but taskScheduler is null." }
+        withTimeoutOrNull(5.seconds) {
+            kord?.apply {
+                shutdown()
+                resources.httpClient.close()
+            } ?: LOGGER.error { "Stop called but kord is null." }
+        }
+
         LOGGER.info { "Logged out." }
         isReady = false
+        isInitialised = false
+        kord = null
+        taskScheduler = null
+        discordEventHandler = null
+        LOGGER.info { "Goodbye." }
     }
 
 }

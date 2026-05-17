@@ -53,5 +53,13 @@
     standard: {
       content: "**Server closed**"
     }
+  },
+  serverLogs: {
+    // Variables: {batch} ~1900 chars in length
+    asWebhook: true,
+    targetChannel: "logChannel",
+    standard: {
+      content: "```txt\n{batch}```"
+    }
   }
 }

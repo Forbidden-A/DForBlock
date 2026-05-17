@@ -11,6 +11,7 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
+import jdk.internal.net.http.common.Log.channel
 import kotlinx.coroutines.*
 import java.util.Collections.emptySet
 import java.util.concurrent.ConcurrentHashMap
@@ -43,15 +44,15 @@ class DiscordTaskScheduler(
                         channel = patchRequest,
                         reason = "DForBlock channel topic is enabled.",
                     )
-                } catch (_: CancellationException) {
-                    throw CancellationException()
                 } catch (e: Exception) {
-                    LOGGER.error { "Could not update channel topic: ${e.message}\n${e.stackTraceToString()}" }
+                    if (e is CancellationException)
+                        throw e
+                    LOGGER.error { "Could not update channel topic for channel '$channelName': ${e.message}\n${e.stackTraceToString()}" }
                 }
                 delay(5.minutes)
             }
         } catch (_: CancellationException) {
-            LOGGER.info { "Update channel task for $channelName is successfully cancelled." }
+            LOGGER.info { "Update channel task for channel '$channelName' is successfully cancelled." }
         }
     }
 
@@ -84,9 +85,9 @@ class DiscordTaskScheduler(
                             state = configManager.core.thinkingBubbleText?.withPlaceholders(placeholders)
                         }
                     }
-                } catch (_: CancellationException) {
-                    throw CancellationException()
                 } catch (e: Exception) {
+                    if (e is CancellationException)
+                        throw e
                     LOGGER.error { "Could not update presence text: ${e.stackTraceToString()}" }
                 }
                 delay(5.minutes)
@@ -97,6 +98,13 @@ class DiscordTaskScheduler(
     }
 
     fun start() {
+        configManager.messages.serverLogs?.let { template ->
+            configManager.channels[template.targetChannel]?.let { targetChannel ->
+                LogtoDiscordHandler.startFlushing(schedulerScope, kord, template, targetChannel)
+                LOGGER.info { "Started sending log batches in channel '${template.targetChannel}'." }
+            } ?: LOGGER.warn { "Could not start find channel '${template.targetChannel}' for server logs." }
+        }
+
         if (configManager.core.showActivity || configManager.core.showThinkingBubble) {
             updatePresenceJob = schedulerScope.launch(block = updatePresenceBlock)
             LOGGER.info { "Started update presence job." }
@@ -112,10 +120,13 @@ class DiscordTaskScheduler(
     }
 
     fun stop() {
-        updateChannelJobs.forEach { it.cancel() }
         updatePresenceJob?.cancel()
-        updateChannelJobs = emptySet()
         updatePresenceJob = null
+        updateChannelJobs.forEach { it.cancel() }
+        updateChannelJobs = emptySet()
+        LOGGER.info { "Stopping log batching job." }
+        LogtoDiscordHandler.stopFlushing()
+        LOGGER.info { "Stopped log batching successfully." }
         schedulerScope.coroutineContext.cancelChildren()
         LOGGER.info { "All jobs cancelled." }
     }

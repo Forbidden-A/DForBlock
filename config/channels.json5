@@ -7,5 +7,12 @@
     //    Variables: {game}, {gameVersion}, {onlinePlayers}, {playerLimit}
     //    {mspt}, {tps}, {targetTps}, {uptime}
     topicTemplate: "{game} {gameVersion} | {onlinePlayers}/{playerLimit} | {mspt}mspt @ {tps}/{targetTps}tps. Up for {uptime}."
+  },
+  logChannel: {
+    channelId: 2,
+    allowsWebhooks: true,
+    webhookToken: "",
+    webhookId: 1,
+    topicTemplate: "{game} {gameVersion} running @ {mspt}mspt @ {tps}/{targetTps}tps. Up for {uptime}."
   }
 }

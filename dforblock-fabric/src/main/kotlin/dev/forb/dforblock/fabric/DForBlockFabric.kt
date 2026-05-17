@@ -2,6 +2,7 @@ package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.*
 import dev.forb.dforblock.core.config.ConfigManager
+import dev.forb.dforblock.core.discord.LogtoDiscordHandler
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
@@ -11,6 +12,12 @@ import net.fabricmc.loader.api.FabricLoader
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.LogEvent
+import org.apache.logging.log4j.core.Logger
+import org.apache.logging.log4j.core.appender.AbstractAppender
+import org.apache.logging.log4j.core.config.Property
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.time.Clock
@@ -39,6 +46,8 @@ class DForBlockFabric : ModInitializer {
     var adventure: MinecraftServerAudiences? = null
         private set
 
+    var consoleAppender: AbstractAppender? = null
+
     lateinit var dForBlock: DForBlock
         private set
     lateinit var communicator: IBlockyCommunicator
@@ -52,6 +61,7 @@ class DForBlockFabric : ModInitializer {
 
     override fun onInitialize() {
         INSTANCE = this
+
         ServerLifecycleEvents.SERVER_STARTING.register { server ->
             minecraftServer = server
             adventure = MinecraftServerAudiences.of(server)
@@ -60,10 +70,31 @@ class DForBlockFabric : ModInitializer {
             configManager = ConfigManager(configDir, JSON)
             dForBlock = DForBlock(configManager, communicator)
             dForBlock.start()
+            if (configManager.messages.serverLogs != null) {
+                consoleAppender = object :
+                    AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
+                    override fun append(event: LogEvent) {
+                        if (event.level <= Level.INFO) LogtoDiscordHandler.enqueue(
+                            event.level.name(),
+                            event.message.formattedMessage
+                        )
+                    }
+                }
+
+                consoleAppender?.apply {
+                    start()
+                    (LogManager.getRootLogger() as Logger).addAppender(this)
+                }
+            }
         }
 
         ServerLifecycleEvents.SERVER_STOPPED.register { _ ->
             dForBlock.disable()
+            consoleAppender?.apply {
+                (LogManager.getRootLogger() as Logger).removeAppender(this)
+                stop()
+            }
+            consoleAppender = null
             minecraftServer = null
             adventure = null
         }

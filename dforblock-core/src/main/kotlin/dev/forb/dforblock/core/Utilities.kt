@@ -11,7 +11,7 @@ import dev.kord.rest.builder.component.textDisplay
 import dev.kord.rest.builder.message.MessageBuilder
 import dev.kord.rest.builder.message.container
 import dev.kord.rest.builder.message.embed
-import io.ktor.utils.io.CancellationException
+import io.ktor.utils.io.*
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -20,9 +20,14 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
-fun PermissionNode.isAllowed(interaction: GuildInteraction): Boolean = allowEveryone || interaction.user.id.value in allowedUsers || interaction.user.roleIds.any { it.value in allowedRoles }
-fun PermissionNode.isProhibited(interaction: GuildInteraction): Boolean = !allowEveryone && interaction.user.id.value !in allowedUsers && interaction.user.roleIds.none { it.value in allowedRoles }
-fun PermissionNode.check(interaction: GuildInteraction, reversed: Boolean = false): Boolean =  if (reversed) isProhibited(interaction) else isAllowed(interaction)
+fun PermissionNode.isAllowed(interaction: GuildInteraction): Boolean =
+    allowEveryone || interaction.user.id.value in allowedUsers || interaction.user.roleIds.any { it.value in allowedRoles }
+
+fun PermissionNode.isProhibited(interaction: GuildInteraction): Boolean =
+    !allowEveryone && interaction.user.id.value !in allowedUsers && interaction.user.roleIds.none { it.value in allowedRoles }
+
+fun PermissionNode.check(interaction: GuildInteraction, reversed: Boolean = false): Boolean =
+    if (reversed) isProhibited(interaction) else isAllowed(interaction)
 
 fun CommandExecutionConfig.isAllowed(command: String): Boolean {
     if (blacklist != null)
@@ -35,14 +40,15 @@ fun CommandExecutionConfig.isAllowed(command: String): Boolean {
 }
 
 val Instant.duration: Duration get() = Clock.System.now() - this
-val Duration.beautify: String get() = this.toComponents { days, hours, minutes, seconds, _ ->
-    buildString {
-        if (days > 0) append("${days}d ")
-        if (hours > 0) append("${hours}h ")
-        if (minutes > 0) append("${minutes}m ")
-        append("${seconds}s")
-    }.trim()
-}
+val Duration.beautify: String
+    get() = this.toComponents { days, hours, minutes, seconds, _ ->
+        buildString {
+            if (days > 0) append("${days}d ")
+            if (hours > 0) append("${hours}h ")
+            if (minutes > 0) append("${minutes}m ")
+            append("${seconds}s")
+        }.trim()
+    }
 
 fun String.withoutMinecraftFormatting(): String {
     val strippedMiniMessage = MiniMessage.miniMessage().stripTags(this)
@@ -64,6 +70,7 @@ fun String.withPlaceholders(placeholders: Map<String, String>?): String {
 
     return result
 }
+
 fun String.withPlaceholders(vararg placeholders: Pair<String, String>): String = withPlaceholders(mapOf(*placeholders))
 
 fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
@@ -79,9 +86,14 @@ fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
     )
 }
 
-fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> = buildCommonPlaceholders(communicator.serverStatistics())
+fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> =
+    buildCommonPlaceholders(communicator.serverStatistics())
 
-fun buildPlayerPlaceholders(playerIdentity: PlayerData, configManager: ConfigManager, communicator: IBlockyCommunicator): Map<String, String> {
+fun buildPlayerPlaceholders(
+    playerIdentity: PlayerData,
+    configManager: ConfigManager,
+    communicator: IBlockyCommunicator
+): Map<String, String> {
     return mapOf(
         "{playerName}" to playerIdentity.name,
         "{playerDisplayName}" to (playerIdentity.displayName ?: ""),
@@ -90,8 +102,10 @@ fun buildPlayerPlaceholders(playerIdentity: PlayerData, configManager: ConfigMan
         "{playerAvatar}" to (playerIdentity.buildAvatarUrl(configManager) ?: "")
     )
 }
+
 fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
-    val content = if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink?:""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
+    val content =
+        if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink ?: ""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
     val processedString = template.withPlaceholders(
         "{author}" to payload.author,
         "{content}" to content,
@@ -102,27 +116,63 @@ fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String
     return miniMessage.deserialize(processedString)
 }
 
-suspend fun ChannelConfig.createMessage(kord: Kord, template: MessageTemplate, playerIdentity: PlayerData?, configManager: ConfigManager, communicator: IBlockyCommunicator,
-                                        placeholders: Map<String, String>? = null, messageBuilder: MessageBuilder.() -> Unit): Boolean {
+suspend fun ChannelConfig.createMessage(
+    kord: Kord,
+    template: MessageTemplate,
+    playerIdentity: PlayerData?,
+    configManager: ConfigManager,
+    communicator: IBlockyCommunicator,
+    placeholders: Map<String, String>? = null,
+    messageBuilder: MessageBuilder.() -> Unit
+): Boolean {
     return try {
         if (template.asWebhook) {
             if (!allowsWebhooks)
                 return false.also { LOGGER.error { "Could not create webhook message as channel '${template.targetChannel}' does not allow webhooks." } }
             val withComponents = template.container != null
-            kord.rest.webhook.executeWebhook(webhookId = Snowflake(webhookId!!), token = webhookToken!!, withComponents = withComponents) {
-                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
-                avatarUrl = template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?:  playerIdentity?.buildAvatarUrl(configManager) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
+            kord.rest.webhook.executeWebhook(
+                webhookId = Snowflake(webhookId!!),
+                token = webhookToken!!,
+                withComponents = withComponents
+            ) {
+                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: playerIdentity?.qualifiedName(
+                    configManager,
+                    communicator
+                ) ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
+                avatarUrl =
+                    template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?: playerIdentity?.buildAvatarUrl(
+                        configManager
+                    ) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
                 messageBuilder()
             }
             return true
         }
         kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
         true
-    } catch (_: CancellationException) { false } catch (e: Exception) {
+    } catch (_: CancellationException) {
+        false
+    } catch (e: Exception) {
         LOGGER.error { "Could not create message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
         false
     }
 }
+
+suspend fun ChannelConfig.createMessage(
+    kord: Kord,
+    template: MessageTemplate,
+    playerIdentity: PlayerData?,
+    configManager: ConfigManager,
+    communicator: IBlockyCommunicator,
+    placeholders: Map<String, String>? = null
+): Boolean = createMessage(
+    kord,
+    template,
+    playerIdentity,
+    configManager,
+    communicator,
+    placeholders,
+    constructMessage(template, placeholders ?: emptyMap())
+)
 
 fun constructMessage(messageTemplate: MessageTemplate, placeholders: Map<String, String>): MessageBuilder.() -> Unit = {
     if (messageTemplate.container != null) {
@@ -144,7 +194,7 @@ fun constructMessage(messageTemplate: MessageTemplate, placeholders: Map<String,
         }
     }
 
-    if(messageTemplate.standard != null) {
+    if (messageTemplate.standard != null) {
         content = messageTemplate.standard.content?.withPlaceholders(placeholders)
         if (messageTemplate.standard.embed != null) {
             embed {
