@@ -1,5 +1,5 @@
 # DForBlock
-
+### This README file was written using AI, if you notice a mistake please open an issue. The README file is likely to be rewritten when 1.0.0 is out.
 DForBlock is a highly configurable Discord-to-Game bridge powered by the Kord library. It connects your game server with your Discord community, bridging chat, advancements, player deaths, and other various server events in real-time.
 
 ## 🎮 Supported Platforms
