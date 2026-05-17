@@ -1,0 +1,224 @@
+package dev.forb.dforblock.neoforge
+
+import dev.forb.dforblock.core.DForBlock
+import dev.forb.dforblock.core.GameMessageData
+import dev.forb.dforblock.core.IBlockyCommunicator
+import dev.forb.dforblock.core.JSON
+import dev.forb.dforblock.core.MCAdvancementMadeData
+import dev.forb.dforblock.core.PlayerData
+import dev.forb.dforblock.core.PlayerDeathData
+import dev.forb.dforblock.core.PlayerJoinLeaveData
+import dev.forb.dforblock.core.config.ConfigManager
+import dev.forb.dforblock.core.discord.LogtoDiscordHandler
+import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
+import net.minecraft.advancements.AdvancementType
+import net.minecraft.server.MinecraftServer
+import net.minecraft.server.level.ServerPlayer
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.ModList
+import net.neoforged.fml.common.Mod
+import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
+import net.neoforged.fml.loading.FMLPaths
+import net.neoforged.neoforge.common.NeoForge
+import net.neoforged.neoforge.event.ServerChatEvent
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent
+import net.neoforged.neoforge.event.entity.player.AdvancementEvent
+import net.neoforged.neoforge.event.entity.player.PlayerEvent
+import net.neoforged.neoforge.event.server.ServerStartingEvent
+import net.neoforged.neoforge.event.server.ServerStoppedEvent
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.LogEvent
+import org.apache.logging.log4j.core.Logger
+import org.apache.logging.log4j.core.appender.AbstractAppender
+import org.apache.logging.log4j.core.config.Property
+import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
+import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
+import java.nio.file.Path
+import kotlin.io.path.div
+import kotlin.time.Clock
+import kotlin.time.Instant
+
+/**
+ * Main mod class.
+ *
+ */
+@Mod(Dforblock.ID)
+object Dforblock {
+    const val ID = "dforblock"
+
+    val configDir = FMLPaths.CONFIGDIR.get() / "dforblock"
+
+    init {
+
+        val obj = runForDist(
+            serverTarget = {
+                MOD_BUS.addListener(::onServerSetup)
+                val coreEvents = DForBlockNeoForge(configDir)
+                NeoForge.EVENT_BUS.register(coreEvents)
+            },
+            clientTarget = {},
+        )
+
+        println(obj)
+    }
+
+    /**
+     * Fired on the global Forge bus.
+     */
+    @SubscribeEvent
+    private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {
+
+    }
+}
+
+class DForBlockNeoForge(val configDir: Path) {
+
+    var minecraftServer: MinecraftServer? = null
+        private set
+
+    var adventure: MinecraftServerAudiences? = null
+        private set
+
+    var consoleAppender: AbstractAppender? = null
+
+    lateinit var dForBlock: DForBlock
+        private set
+    lateinit var communicator: IBlockyCommunicator
+        private set
+
+    lateinit var configManager: ConfigManager
+        private set
+
+    lateinit var startup: Instant
+        private set
+
+    var isLuckperms: Boolean = false
+        private set
+
+    @SubscribeEvent
+    fun onServerStarting(event: ServerStartingEvent) {
+        minecraftServer = event.server
+        adventure = MinecraftServerAudiences.of(event.server)
+        startup = Clock.System.now()
+        isLuckperms = ModList.get().isLoaded("luckperms")
+        communicator = NeoForgeBlockyCommunicator(this, isLuckperms, configDir)
+        configManager = ConfigManager(configDir, JSON)
+        dForBlock = DForBlock(configManager, communicator)
+        dForBlock.start()
+        if (configManager.messages.serverLogs != null) {
+            consoleAppender = object :
+                AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
+                override fun append(event: LogEvent) {
+                    if (event.level <= Level.INFO) LogtoDiscordHandler.enqueue(
+                        event.level.name(),
+                        event.message.formattedMessage
+                    )
+                }
+            }
+
+            consoleAppender?.apply {
+                start()
+                (LogManager.getRootLogger() as Logger).addAppender(this)
+            }
+        }
+    }
+
+    @SubscribeEvent
+    fun onChatMessage(event: ServerChatEvent) {
+        val content = event.rawText
+        val payload = GameMessageData(
+            messageContent = content,
+            channelName = "default",
+            playerIdentity = PlayerData.Minecraft(
+                event.player.uuid,
+                event.player.name.string,
+                displayName = event.player.displayName.string
+            )
+        )
+        dForBlock.onBlockyMessageReceive(payload)
+    }
+
+    @SubscribeEvent
+    fun onServerStopped(event: ServerStoppedEvent) {
+        dForBlock.disable()
+
+        consoleAppender?.apply {
+            (LogManager.getRootLogger() as Logger).removeAppender(this)
+            stop()
+        }
+        consoleAppender = null
+        minecraftServer = null
+        adventure = null
+    }
+
+    @SubscribeEvent
+    fun onPlayerJoin(event: PlayerEvent.PlayerLoggedInEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+
+        val payload = PlayerJoinLeaveData(
+            PlayerData.Minecraft(
+                player.uuid,
+                player.name.string,
+                player.displayName.string
+            )
+        )
+        dForBlock.onPlayerJoin(payload)
+    }
+
+    @SubscribeEvent
+    fun onPlayerLeave(event: PlayerEvent.PlayerLoggedOutEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+
+        val payload = PlayerJoinLeaveData(
+            playerIdentity = PlayerData.Minecraft(
+                player.uuid,
+                player.name.string,
+                player.displayName.string
+            )
+        )
+        dForBlock.onPlayerLeave(payload)
+    }
+
+    @SubscribeEvent
+    fun onPlayerDeath(event: LivingDeathEvent) {
+        val entity = event.entity
+        if (entity !is ServerPlayer) return
+
+        val payload = PlayerDeathData(
+            playerIdentity = PlayerData.Minecraft(
+                entity.uuid,
+                entity.name.string,
+                entity.displayName.string
+            ),
+            deathMessage = event.source.getLocalizedDeathMessage(entity).string,
+        )
+        dForBlock.onPlayerDeath(payload)
+    }
+
+    @SubscribeEvent
+    fun onAdvancementEarned(event: AdvancementEvent.AdvancementEarnEvent) {
+        val player = event.entity as? ServerPlayer ?: return
+        val displayOptional = event.advancement.value.display()
+        if (displayOptional.isEmpty) return
+        val displayInfo = displayOptional.get()
+        if (!displayInfo.shouldAnnounceChat())
+            return
+
+        val actionType = when (displayInfo.type) {
+            AdvancementType.TASK -> "made"
+            else -> "completed"
+        }
+
+        val payload = MCAdvancementMadeData(
+            advancementName = displayInfo.title.string,
+            advancementDescription = displayInfo.description.string,
+            advancementType = displayInfo.type.name.lowercase(),
+            actionType = actionType,
+            playerIdentity = PlayerData.Minecraft(player.uuid, player.name.string, player.displayName.string)
+        )
+
+        dForBlock.onMinecraftAdvancement(payload)
+    }
+
+}

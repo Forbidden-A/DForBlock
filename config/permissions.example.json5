@@ -19,7 +19,7 @@
     allowEveryone: false,
     allowedRoles: []
   },
-  runCommandsButton: {
+  runCommandButton: {
     allowEveryone: false
   },
   allowedCommands: {

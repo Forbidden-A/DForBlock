@@ -14,7 +14,7 @@
   stopButton: {
     allowedRoles: []
   },
-  runCommandsButton: {
+  runCommandButton: {
     allowedRoles: []
   },
   allowedCommands: {
