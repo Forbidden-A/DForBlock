@@ -7,6 +7,8 @@ json5 = "0.5.0"
 adventure = "4.26.1"
 luckperms = "5.4"
 kord = "fix-required-field-compv2-SNAPSHOT"
+paper-api = "26.1.2.build.+"
+run-task = "3.0.2"
 
 [libraries]
 kotlin-logging = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlin-logging" }
@@ -19,7 +21,13 @@ adventure-legacy = { module = "net.kyori:adventure-text-serializer-legacy", vers
 adventure-text = { module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure" }
 luckperms = { module = "net.luckperms:api", version.ref = "luckperms" }
 
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
+
+
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+
+run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

@@ -10,7 +10,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
-import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -63,8 +62,8 @@ class DForBlockFabric : ModInitializer {
             minecraftServerAudiences = MinecraftServerAudiences.of(server)
             startup = Clock.System.now()
             configManager = ConfigManager(configDir, JSON)
-            communicator = MinecraftModCommunicator(
-                minecraftServer = FabricServer(server, startup),
+            communicator = MinecraftCommunicator(
+                serverLike = FabricServerLike(server, startup),
                 configManager = configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
                 isLuckperms = isLuckperms,
                 configDir = configDir,

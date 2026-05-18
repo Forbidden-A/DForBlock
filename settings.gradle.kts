@@ -1,4 +1,4 @@
-include(":dforblock-core", ":dforblock-fabric", ":dforblock-neoforge")
+include(":dforblock-core", ":dforblock-fabric", ":dforblock-neoforge", ":dforblock-papermc")
 
 rootProject.name = "dforblock"
 

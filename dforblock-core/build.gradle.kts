@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.utils.extendsFrom
 
 plugins {
     kotlin("jvm")
@@ -17,7 +16,7 @@ repositories {
 }
 
 val shadowed by configurations.registering
-configurations.implementation.extendsFrom(shadowed)
+configurations.implementation.get().extendsFrom(shadowed)
 
 dependencies {
     shadowed(libs.kotlin.logging)

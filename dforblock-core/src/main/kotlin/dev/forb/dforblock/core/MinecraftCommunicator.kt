@@ -7,7 +7,7 @@ import java.nio.file.Path
 import java.util.concurrent.RejectedExecutionException
 import kotlin.coroutines.resume
 
-interface ModdedMinecraftServer {
+interface MinecraftServerLike {
     val players: Set<PlayerData>
     val statistics: GameStatistics
     val isStopped: Boolean
@@ -16,8 +16,8 @@ interface ModdedMinecraftServer {
     fun executeCommand(command: String, builder: StringBuilder)
 }
 
-class MinecraftModCommunicator(
-    val minecraftServer: ModdedMinecraftServer,
+class MinecraftCommunicator(
+    val serverLike: MinecraftServerLike,
     val configManager: ConfigManager,
     val playerAudience: () -> Audience?,
     override val isLuckperms: Boolean,
@@ -26,11 +26,14 @@ class MinecraftModCommunicator(
 
     override suspend fun heartbeat(): Boolean = suspendCancellableCoroutine { continuation ->
         try {
-            minecraftServer.executeIfPossible {
+            serverLike.executeIfPossible {
                 if (continuation.isActive) continuation.resume(true)
             }
-        } catch (_: RejectedExecutionException) { // Server is already stopping
+        } catch (_: RejectedExecutionException) { // Server is stopping
             if (continuation.isActive) continuation.resume(true)
+        } catch (e: Exception) {
+            LOGGER.error { "Exception during heartbeat ${e.message}\n${e.stackTraceToString()}" }
+            if (continuation.isActive) continuation.resume(false)
         }
     }
 
@@ -43,28 +46,28 @@ class MinecraftModCommunicator(
     }
 
     override fun onlinePlayers(): Set<String> =
-        minecraftServer.players.map { it.qualifiedName(configManager, this) }.toSet()
+        serverLike.players.map { it.qualifiedName(configManager, this) }.toSet()
 
     private lateinit var latestStatistics: GameStatistics
 
     override suspend fun serverStatistics(): GameStatistics = suspendCancellableCoroutine { continuation ->
-        if (minecraftServer.isStopped) {
+        if (serverLike.isStopped) {
             if (continuation.isActive && ::latestStatistics.isInitialized) {
                 continuation.resume(latestStatistics)
             }
         }
         else {
-            latestStatistics = minecraftServer.statistics
+            latestStatistics = serverLike.statistics
             continuation.resume(latestStatistics)
         }
     }
 
-    override fun stopServer() = minecraftServer.halt(false)
+    override fun stopServer() = serverLike.halt(false)
 
     override suspend fun executeCommand(command: String): String = suspendCancellableCoroutine { continuation ->
         val builder = StringBuilder()
         try {
-            minecraftServer.executeCommand(command, builder)
+            serverLike.executeCommand(command, builder)
             val result = builder.toString().trim()
             if (continuation.isActive) {
                 if (result.isEmpty()) continuation.resume("Command executed successfully (no text output).")

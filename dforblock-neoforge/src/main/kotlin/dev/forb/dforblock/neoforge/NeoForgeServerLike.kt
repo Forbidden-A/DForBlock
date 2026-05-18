@@ -1,7 +1,7 @@
-package dev.forb.dforblock.fabric
+package dev.forb.dforblock.neoforge
 
 import dev.forb.dforblock.core.GameStatistics
-import dev.forb.dforblock.core.ModdedMinecraftServer
+import dev.forb.dforblock.core.MinecraftServerLike
 import dev.forb.dforblock.core.PlayerData
 import net.minecraft.commands.CommandSource
 import net.minecraft.network.chat.Component
@@ -9,7 +9,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.permissions.PermissionSet
 import kotlin.time.Instant
 
-class FabricServer(val minecraftServer: MinecraftServer, val startup: Instant) : ModdedMinecraftServer {
+class NeoForgeServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftServerLike {
     override val isStopped: Boolean
         get() = minecraftServer.isStopped
 
@@ -53,9 +53,7 @@ class FabricServer(val minecraftServer: MinecraftServer, val startup: Instant) :
     override fun halt(wait: Boolean) = minecraftServer.halt(wait)
 
     override fun executeCommand(command: String, builder: StringBuilder) {
-        minecraftServer.execute {
-            val builder = StringBuilder()
-
+        executeIfPossible {
             val commandSource = object : CommandSource {
                 override fun sendSystemMessage(message: Component) {
                     builder.append(message.string).append("\n")

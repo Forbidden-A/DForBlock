@@ -42,7 +42,8 @@ open class PlayerAdvancementTrackerMixin {
 
         val actionType = when (displayInfo.type) {
             AdvancementType.TASK -> "made"
-            else -> "completed"
+            AdvancementType.GOAL -> "reached"
+            AdvancementType.CHALLENGE -> "completed"
         }
 
         val payload = MCAdvancementMadeData(

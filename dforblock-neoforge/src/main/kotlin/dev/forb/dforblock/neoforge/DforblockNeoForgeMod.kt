@@ -6,7 +6,7 @@ import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.JSON
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.MCAdvancementMadeData
-import dev.forb.dforblock.core.MinecraftModCommunicator
+import dev.forb.dforblock.core.MinecraftCommunicator
 import dev.forb.dforblock.core.PlayerData
 import dev.forb.dforblock.core.PlayerDeathData
 import dev.forb.dforblock.core.PlayerJoinLeaveData
@@ -16,7 +16,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
 import net.minecraft.advancements.AdvancementType
-import net.minecraft.server.MinecraftServer
 import net.minecraft.server.level.ServerPlayer
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.ModList
@@ -29,7 +28,6 @@ import net.neoforged.neoforge.event.entity.player.AdvancementEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.server.ServerStartingEvent
 import net.neoforged.neoforge.event.server.ServerStoppedEvent
-import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LogEvent
@@ -47,8 +45,8 @@ import kotlin.time.Instant
  * Main mod class.
  *
  */
-@Mod(Dforblock.ID)
-object Dforblock {
+@Mod(DforblockNeoForgeMod.ID)
+object DforblockNeoForgeMod {
     const val ID = "dforblock"
 
     val configDir = FMLPaths.CONFIGDIR.get() / "dforblock"
@@ -88,13 +86,13 @@ class DForBlockNeoForge(val configDir: Path) {
         private set
 
     @SubscribeEvent
-    fun onServerStarting(event: ServerStartingEvent)    {
+    fun onServerStarting(event: ServerStartingEvent) {
         minecraftServerAudiences = MinecraftServerAudiences.of(event.server)
         startup = Clock.System.now()
         isLuckperms = ModList.get().isLoaded("luckperms")
         configManager = ConfigManager(configDir, JSON)
-        communicator = MinecraftModCommunicator(
-            minecraftServer = NeoForgeServer(event.server, startup),
+        communicator = MinecraftCommunicator(
+            serverLike = NeoForgeServerLike(event.server, startup),
             configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { minecraftServerAudiences?.players() },
             isLuckperms = isLuckperms,
@@ -136,7 +134,7 @@ class DForBlockNeoForge(val configDir: Path) {
     }
 
     @SubscribeEvent
-    fun onServerStopped(event: ServerStoppingEvent) {
+    fun onServerStopped(event: ServerStoppedEvent) {
         runBlocking {
             dForBlock?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
             delay(500.milliseconds) // ensure things got closed properly :/
@@ -207,7 +205,8 @@ class DForBlockNeoForge(val configDir: Path) {
 
         val actionType = when (displayInfo.type) {
             AdvancementType.TASK -> "made"
-            else -> "completed"
+            AdvancementType.GOAL -> "achieved"
+            AdvancementType.CHALLENGE -> "completed"
         }
 
         val payload = MCAdvancementMadeData(
