@@ -14,7 +14,7 @@ interface IBlockyCommunicator {
 
     fun onlinePlayers(): Set<String>
 
-    fun serverStatistics(): GameStatistics
+    suspend fun serverStatistics(): GameStatistics
 
     fun stopServer()
 

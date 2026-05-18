@@ -86,7 +86,7 @@ fun buildCommonPlaceholders(statistics: GameStatistics): Map<String, String> {
     )
 }
 
-fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> =
+suspend fun buildCommonPlaceholders(communicator: IBlockyCommunicator): Map<String, String> =
     buildCommonPlaceholders(communicator.serverStatistics())
 
 fun buildPlayerPlaceholders(

@@ -1,8 +1,7 @@
 plugins {
     id("java-library")
     id("maven-publish")
-    id("idea")
-    id("net.neoforged.moddev") version "2.0.141"
+    id("net.neoforged.moddev")
     alias(libs.plugins.kotlin.jvm)
 }
 
@@ -13,7 +12,7 @@ val modId: String by project
 val neoVersion: String by project
 
 // Properties needed for the metadata task
-val minecraftVersion: String by project
+val minecraftVersion: String by rootProject
 val minecraftVersionRange: String by project
 val neoVersionRange: String by project
 val loaderVersionRange: String by project
@@ -103,9 +102,8 @@ sourceSets.main.get().resources.srcDir("src/generated/resources")
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:6.2.0")
-    implementation(project(":dforblock-core"))
-    implementation("net.kyori:adventure-platform-neoforge:${project.property("kyori_adventure_neoforge_version")}")
-    implementation(libs.kord.core)
+    jarJar(implementation(project(path = ":dforblock-core", configuration = "shadow"))) {  }
+    jarJar(implementation("net.kyori:adventure-platform-neoforge:${project.property("kyori_adventure_neoforge_version")}")) {  }
     compileOnly(libs.kotlin.logging)
     compileOnly(libs.json5)
 

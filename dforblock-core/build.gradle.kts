@@ -22,9 +22,10 @@ configurations.implementation.extendsFrom(shadowed)
 dependencies {
     shadowed(libs.kotlin.logging)
     shadowed(libs.kord.core) {
-        exclude(group = "org.jetbrains.kotlin")
-        exclude(group = "org.jetbrains.kotlinx")
         exclude(group = "org.slf4j")
+        exclude(group = "org.jetbrains.kotlin")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines*")
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization*")
     }
     shadowed(libs.json5)
 
@@ -48,6 +49,7 @@ tasks.shadowJar {
     relocate("io.ktor", "dev.forb.dforblock.shadow.ktor")
     relocate("dev.kord", "dev.forb.dforblock.shadow.kord")
 
+    mergeServiceFiles()
 }
 
 java {

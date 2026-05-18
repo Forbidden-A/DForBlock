@@ -52,6 +52,6 @@ open class PlayerAdvancementTrackerMixin {
             actionType = actionType,
             playerIdentity = PlayerData.Minecraft(player.uuid, player.name.string, player.displayName.string)
         )
-        DForBlockFabric.INSTANCE.dForBlock.onMinecraftAdvancement(payload)
+        DForBlockFabric.INSTANCE.dForBlock?.launch { onMinecraftAdvancement(payload) }
     }
 }

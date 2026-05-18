@@ -5,7 +5,7 @@ evaluationDependsOn(":dforblock-core")
 
 plugins {
     kotlin("jvm")
-    id("net.fabricmc.fabric-loom") version "1.16-SNAPSHOT"
+    id("net.fabricmc.fabric-loom")
     id("maven-publish")
 }
 
@@ -26,26 +26,28 @@ fabricApi {
 
 }
 
+val minecraftVersion: String by rootProject
+val loaderVersion: String by project
+val fabricApiVersion: String by project
+val kotlinLoaderVersion: String by project
+val kyoriAdventureFabricVersion: String by project
+
 dependencies {
-    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_api_version")}")
-    implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-    implementation("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
-    include("net.kyori:adventure-platform-fabric:${project.property("kyori_adventure_fabric_version")}")
-    implementation(libs.adventure.legacy)
-    include(libs.adventure.legacy)
-    implementation(libs.adventure.text)
-    include(libs.adventure.text)
-    implementation(project(":dforblock-core"))
-    include(project(":dforblock-core", configuration = "shadow"))
+    minecraft("com.mojang:minecraft:$minecraftVersion")
+    implementation("net.fabricmc:fabric-loader:$loaderVersion")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
+    implementation("net.fabricmc:fabric-language-kotlin:$kotlinLoaderVersion")
+    include(implementation("net.kyori:adventure-platform-fabric:${kyoriAdventureFabricVersion}")) {  }
+    include(implementation(libs.adventure.legacy.get())) {  }
+    include(implementation(libs.adventure.text.get())) {  }
+    include(implementation(project(":dforblock-core", configuration = "shadow"))) {  }
     compileOnly(libs.kotlin.logging)
 }
 
 tasks.processResources {
     inputs.property("version", project.version)
-    inputs.property("minecraft_version", project.property("minecraft_version"))
-    inputs.property("loader_version", project.property("loader_version"))
+    inputs.property("minecraft_version", minecraftVersion)
+    inputs.property("loader_version", loaderVersion)
     filteringCharset = "UTF-8"
 
     from(rootProject.file("config/core.json5"))
@@ -56,9 +58,9 @@ tasks.processResources {
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,
-            "minecraft_version" to (project.property("minecraft_version") ?: "Failed to get version"),
-            "loader_version" to (project.property("loader_version") ?: "Failed to get version"),
-            "kotlin_loader_version" to (project.property("kotlin_loader_version") ?: "Failed to get version")
+            "minecraft_version" to minecraftVersion,
+            "loader_version" to loaderVersion,
+            "kotlin_loader_version" to kotlinLoaderVersion
         )
     }
 }

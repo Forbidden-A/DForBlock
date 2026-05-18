@@ -90,7 +90,9 @@ class DiscordBotManager(
     }
 
     private suspend fun setup() {
-        kord = Kord(configManager.core.discordToken).also { kord ->
+        kord = Kord(configManager.core.discordToken) {
+            enableShutdownHook = false
+        }.also { kord ->
             for (guildId in configManager.core.guildIds) {
                 LOGGER.info { "Creating commands in guild with Id '$guildId'" }
                 createGuildCommands(kord, guildId)

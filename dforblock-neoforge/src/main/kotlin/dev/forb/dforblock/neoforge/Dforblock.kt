@@ -4,12 +4,16 @@ import dev.forb.dforblock.core.DForBlock
 import dev.forb.dforblock.core.GameMessageData
 import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.JSON
+import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.MCAdvancementMadeData
+import dev.forb.dforblock.core.MinecraftModCommunicator
 import dev.forb.dforblock.core.PlayerData
 import dev.forb.dforblock.core.PlayerDeathData
 import dev.forb.dforblock.core.PlayerJoinLeaveData
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.discord.LogtoDiscordHandler
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences
 import net.minecraft.advancements.AdvancementType
 import net.minecraft.server.MinecraftServer
@@ -17,7 +21,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.ModList
 import net.neoforged.fml.common.Mod
-import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.ServerChatEvent
@@ -26,17 +29,18 @@ import net.neoforged.neoforge.event.entity.player.AdvancementEvent
 import net.neoforged.neoforge.event.entity.player.PlayerEvent
 import net.neoforged.neoforge.event.server.ServerStartingEvent
 import net.neoforged.neoforge.event.server.ServerStoppedEvent
+import net.neoforged.neoforge.event.server.ServerStoppingEvent
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LogEvent
 import org.apache.logging.log4j.core.Logger
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.config.Property
-import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 import java.nio.file.Path
 import kotlin.io.path.div
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 /**
@@ -53,41 +57,28 @@ object Dforblock {
 
         val obj = runForDist(
             serverTarget = {
-                MOD_BUS.addListener(::onServerSetup)
-                val coreEvents = DForBlockNeoForge(configDir)
-                NeoForge.EVENT_BUS.register(coreEvents)
+                NeoForge.EVENT_BUS.register(DForBlockNeoForge(this.configDir))
             },
             clientTarget = {},
         )
 
         println(obj)
     }
-
-    /**
-     * Fired on the global Forge bus.
-     */
-    @SubscribeEvent
-    private fun onServerSetup(event: FMLDedicatedServerSetupEvent) {
-
-    }
 }
 
 class DForBlockNeoForge(val configDir: Path) {
 
-    var minecraftServer: MinecraftServer? = null
-        private set
-
-    var adventure: MinecraftServerAudiences? = null
+    var minecraftServerAudiences: MinecraftServerAudiences? = null
         private set
 
     var consoleAppender: AbstractAppender? = null
 
-    lateinit var dForBlock: DForBlock
+    var dForBlock: DForBlock? = null
         private set
-    lateinit var communicator: IBlockyCommunicator
+    var communicator: IBlockyCommunicator? = null
         private set
 
-    lateinit var configManager: ConfigManager
+    var configManager: ConfigManager? = null
         private set
 
     lateinit var startup: Instant
@@ -97,16 +88,21 @@ class DForBlockNeoForge(val configDir: Path) {
         private set
 
     @SubscribeEvent
-    fun onServerStarting(event: ServerStartingEvent) {
-        minecraftServer = event.server
-        adventure = MinecraftServerAudiences.of(event.server)
+    fun onServerStarting(event: ServerStartingEvent)    {
+        minecraftServerAudiences = MinecraftServerAudiences.of(event.server)
         startup = Clock.System.now()
         isLuckperms = ModList.get().isLoaded("luckperms")
-        communicator = NeoForgeBlockyCommunicator(this, isLuckperms, configDir)
         configManager = ConfigManager(configDir, JSON)
-        dForBlock = DForBlock(configManager, communicator)
-        dForBlock.start()
-        if (configManager.messages.serverLogs != null) {
+        communicator = MinecraftModCommunicator(
+            minecraftServer = NeoForgeServer(event.server, startup),
+            configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
+            playerAudience = { minecraftServerAudiences?.players() },
+            isLuckperms = isLuckperms,
+            configDir = configDir
+        )
+        dForBlock = DForBlock(configManager?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." }, communicator?:return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock..." })
+        dForBlock?.start() ?: return LOGGER.error { "Unexpected state, 'dForBlock is null' while starting dForBlock..." }
+        if (configManager?.messages?.serverLogs != null) {
             consoleAppender = object :
                 AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
                 override fun append(event: LogEvent) {
@@ -136,20 +132,24 @@ class DForBlockNeoForge(val configDir: Path) {
                 displayName = event.player.displayName.string
             )
         )
-        dForBlock.onBlockyMessageReceive(payload)
+        dForBlock?.launch { onBlockyMessageReceive(payload) }
     }
 
     @SubscribeEvent
-    fun onServerStopped(event: ServerStoppedEvent) {
-        dForBlock.disable()
-
+    fun onServerStopped(event: ServerStoppingEvent) {
+        runBlocking {
+            dForBlock?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
+            delay(500.milliseconds) // ensure things got closed properly :/
+        }
         consoleAppender?.apply {
             (LogManager.getRootLogger() as Logger).removeAppender(this)
             stop()
         }
         consoleAppender = null
-        minecraftServer = null
-        adventure = null
+        minecraftServerAudiences = null
+        dForBlock = null
+        communicator = null
+        configManager = null
     }
 
     @SubscribeEvent
@@ -163,7 +163,7 @@ class DForBlockNeoForge(val configDir: Path) {
                 player.displayName.string
             )
         )
-        dForBlock.onPlayerJoin(payload)
+        dForBlock?.launch { onPlayerJoin(payload) }
     }
 
     @SubscribeEvent
@@ -177,7 +177,7 @@ class DForBlockNeoForge(val configDir: Path) {
                 player.displayName.string
             )
         )
-        dForBlock.onPlayerLeave(payload)
+        dForBlock?.launch { onPlayerLeave(payload) }
     }
 
     @SubscribeEvent
@@ -193,7 +193,7 @@ class DForBlockNeoForge(val configDir: Path) {
             ),
             deathMessage = event.source.getLocalizedDeathMessage(entity).string,
         )
-        dForBlock.onPlayerDeath(payload)
+        dForBlock?.launch { onPlayerDeath(payload) }
     }
 
     @SubscribeEvent
@@ -218,7 +218,7 @@ class DForBlockNeoForge(val configDir: Path) {
             playerIdentity = PlayerData.Minecraft(player.uuid, player.name.string, player.displayName.string)
         )
 
-        dForBlock.onMinecraftAdvancement(payload)
+        dForBlock?.launch { onMinecraftAdvancement(payload) }
     }
 
 }

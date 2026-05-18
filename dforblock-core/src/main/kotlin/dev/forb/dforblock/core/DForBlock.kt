@@ -24,6 +24,8 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
     var botManager: DiscordBotManager? = null
         private set
 
+    fun launch(block: suspend DForBlock.() -> Unit) = botManager?.botScope?.launch { block() }
+
     @OptIn(PrivilegedIntent::class)
     fun start() {
         LOGGER.info { "DForBlock starting..." }
@@ -57,7 +59,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
      * Game Event Handlers
      */
 
-    fun onBlockyMessageReceive(payload: GameMessageData) = botManager?.let { botManager ->
+    suspend fun onBlockyMessageReceive(payload: GameMessageData) = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to handle game message before discord is ready, message will not be sent." }
 
@@ -89,7 +91,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         } ?: LOGGER.error { "Tried to handle game message but kord is null." }
     } ?: LOGGER.error { "Tried to handle game message but botManager is null." }
 
-    fun onServerStart() = botManager?.let { botManager ->
+    suspend fun onServerStart() = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to send startup message before discord is ready, message will not be sent." }
 
@@ -116,7 +118,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         } ?: LOGGER.error { "Tried to handle server start event but kord is null." }
     } ?: LOGGER.error { "Tried to handle server start event but botManager is null." }
 
-    fun onServerStop(): Job? {
+    suspend fun onServerStop(): Job? {
         if (botManager == null) {
             LOGGER.error { "Tried to handle server stop event but botManager is null." }
             return null
@@ -152,7 +154,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         return null
     }
 
-    fun onPlayerJoin(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
+    suspend fun onPlayerJoin(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to handle player join before discord is ready, message will not be sent." }
 
@@ -181,7 +183,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         } ?: LOGGER.error { "Tried to handle player join event but kord is null." }
     } ?: LOGGER.error { "Tried to handle player join event but botManager is null." }
 
-    fun onPlayerLeave(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
+    suspend fun onPlayerLeave(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to handle player leave before discord is ready, message will not be sent." }
 
@@ -209,7 +211,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         } ?: LOGGER.error { "Tried to handle player leave event but kord is null." }
     } ?: LOGGER.error { "Tried to handle player leave event but botManager is null." }
 
-    fun onPlayerDeath(payload: PlayerDeathData) = botManager?.let { botManager ->
+    suspend fun onPlayerDeath(payload: PlayerDeathData) = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to handle player death before discord is ready, message will not be sent." }
 
@@ -240,7 +242,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         } ?: LOGGER.error { "Tried to handle player death event but kord is null." }
     } ?: LOGGER.error { "Tried to handle player death event but botManager is null." }
 
-    fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botManager?.let { botManager ->
+    suspend fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botManager?.let { botManager ->
         if (!botManager.isReady)
             return@let LOGGER.warn { "Attempted to handle mc player advancement before discord is ready, message will not be sent." }
 
