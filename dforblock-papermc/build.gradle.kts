@@ -32,7 +32,7 @@ dependencies {
 
 tasks.shadowJar {
     configurations = listOf(project.configurations["shadowed"])
-    archiveClassifier.set("shadow")
+    archiveClassifier.set("")
 
     relocate("io.ktor", "dev.forb.dforblock.shadow.ktor")
     relocate("dev.kord", "dev.forb.dforblock.shadow.kord")

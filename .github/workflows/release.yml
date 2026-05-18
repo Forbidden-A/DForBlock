@@ -32,6 +32,9 @@ jobs:
       - name: Build Neoforge Mod
         run: ./gradlew :dforblock-neoforge:build
 
+      - name: Build Paper Plugin
+        run: ./gradlew :dforblock-papermc:build
+
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
