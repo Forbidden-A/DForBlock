@@ -1,0 +1,10 @@
+{
+  "groupId": "dev.forb",
+  "artifactId": "dforblock",
+  "modName": "DForBlock",
+  "version": "by rootProject",
+  "buildSystem": "Gradle",
+  "language": "Kotlin",
+  "jarPath": "build/libs/dforblock-by rootProject.jar",
+  "buildTask": "shadowJar"
+}

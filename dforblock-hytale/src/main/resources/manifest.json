@@ -1,0 +1,10 @@
+{
+  "Group": "dev.forb",
+  "Name": "DForBlock",
+  "Version": "by rootProject",
+  "Description": "A Hytale <-> discord bridge",
+  "Authors": [{"Name": "ForbiddenBA"}],
+  "Main": "dev.forb.dforblock.DForBlockPlugin",
+  "LoadOrder": "POSTWORLD",
+  "IncludesAssetPack": true
+}
