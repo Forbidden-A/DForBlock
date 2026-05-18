@@ -52,12 +52,10 @@ class DForBlockPaper : JavaPlugin(), Listener {
             dataFolder.mkdirs()
         }
         configManager = ConfigManager(configDir, JSON)
-        communicator = MinecraftCommunicator(
-            serverLike = PaperServerLike(this, server, startup),
-            configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
-            playerAudience = { server },
+        communicator = PaperCommunicator(
+            configDir = configDir,
             isLuckperms = isLuckperms,
-            configDir = configDir
+            plugin = this
         )
 
         dForBlock = DForBlock(

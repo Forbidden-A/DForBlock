@@ -1,7 +1,7 @@
 package dev.forb.dforblock.fabric
 
 import dev.forb.dforblock.core.GameStatistics
-import dev.forb.dforblock.core.MinecraftServerLike
+import dev.forb.dforblock.core.MinecraftModdedServerLike
 import dev.forb.dforblock.core.PlayerData
 import net.minecraft.commands.CommandSource
 import net.minecraft.network.chat.Component
@@ -9,7 +9,7 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.permissions.PermissionSet
 import kotlin.time.Instant
 
-class FabricServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftServerLike {
+class FabricModdedServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftModdedServerLike {
     override val isStopped: Boolean
         get() = minecraftServer.isStopped
 

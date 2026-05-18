@@ -6,7 +6,7 @@ import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.JSON
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.MCAdvancementMadeData
-import dev.forb.dforblock.core.MinecraftCommunicator
+import dev.forb.dforblock.core.ModdedMinecraftCommunicator
 import dev.forb.dforblock.core.PlayerData
 import dev.forb.dforblock.core.PlayerDeathData
 import dev.forb.dforblock.core.PlayerJoinLeaveData
@@ -91,8 +91,8 @@ class DForBlockNeoForge(val configDir: Path) {
         startup = Clock.System.now()
         isLuckperms = ModList.get().isLoaded("luckperms")
         configManager = ConfigManager(configDir, JSON)
-        communicator = MinecraftCommunicator(
-            serverLike = NeoForgeServerLike(event.server, startup),
+        communicator = ModdedMinecraftCommunicator(
+            serverLike = NeoForgeModdedServerLike(event.server, startup),
             configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { minecraftServerAudiences?.players() },
             isLuckperms = isLuckperms,

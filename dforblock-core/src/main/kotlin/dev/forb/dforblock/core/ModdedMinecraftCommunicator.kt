@@ -7,7 +7,7 @@ import java.nio.file.Path
 import java.util.concurrent.RejectedExecutionException
 import kotlin.coroutines.resume
 
-interface MinecraftServerLike {
+interface MinecraftModdedServerLike {
     val players: Set<PlayerData>
     val statistics: GameStatistics
     val isStopped: Boolean
@@ -16,8 +16,8 @@ interface MinecraftServerLike {
     fun executeCommand(command: String, builder: StringBuilder)
 }
 
-class MinecraftCommunicator(
-    val serverLike: MinecraftServerLike,
+class ModdedMinecraftCommunicator(
+    val serverLike: MinecraftModdedServerLike,
     val configManager: ConfigManager,
     val playerAudience: () -> Audience?,
     override val isLuckperms: Boolean,
