@@ -38,5 +38,5 @@ jobs:
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          files: dforblock-fabric/build/libs/*.jar, dforblock-neoforge/build/libs/*.jar
+          files: dforblock-fabric/build/libs/*.jar, dforblock-neoforge/build/libs/*.jar, dforblock-papermc/build/libs/*.jar
           generate_release_notes: true
