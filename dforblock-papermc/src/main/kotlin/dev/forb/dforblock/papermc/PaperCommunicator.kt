@@ -13,7 +13,7 @@ import kotlin.coroutines.resume
 
 class PaperCommunicator(
     override val configDir: Path,
-    override val isLuckperms: Boolean,
+    override val isLuckperms: () -> Boolean,
     val plugin: DForBlockPaper
 ) : IBlockyCommunicator {
     override fun stopServer() = plugin.server.shutdown()
@@ -53,7 +53,7 @@ class PaperCommunicator(
         val channelName =
             plugin.configManager?.channels?.entries?.firstOrNull { (_, v) -> v.channelId == payload.channelId }?.key
                 ?: return
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
+        val kyoriComponent = prepareMiniMessage(payload, channelName, template)
         plugin.server.sendMessage(kyoriComponent)
     }
 

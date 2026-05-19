@@ -45,7 +45,7 @@ class DForBlockHytalePlugin(init: JavaPluginInit) : JavaPlugin(init) {
             private set
     }
 
-    var dForBlockOrchestrator: DForBlock? = null
+    var dForBlockOrchestrator: DForBlockOrchestrator? = null
         private set
     var communicator: IBlockyCommunicator? = null
         private set
@@ -81,7 +81,7 @@ class DForBlockHytalePlugin(init: JavaPluginInit) : JavaPlugin(init) {
             configManager = configManager!!,
         )
 
-        dForBlockOrchestrator = DForBlock(
+        dForBlockOrchestrator = DForBlockOrchestrator(
             configManager ?: run {
                 hytaleLogger.at(Level.SEVERE)
                     .log("Unexpected state, 'configManager is null' while creating dforBlock...")
