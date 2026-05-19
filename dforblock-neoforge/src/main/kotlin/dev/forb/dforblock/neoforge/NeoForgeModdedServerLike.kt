@@ -10,8 +10,8 @@ import net.minecraft.server.permissions.PermissionSet
 import kotlin.time.Instant
 
 class NeoForgeModdedServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftModdedServerLike {
-    override val isStopped: Boolean
-        get() = minecraftServer.isStopped
+    override val isNotActive: Boolean
+        get() = minecraftServer.isShutdown
 
     override val players: Set<PlayerData>
         get() = minecraftServer.playerList.players.map { minecraftPlayer ->
@@ -48,12 +48,16 @@ class NeoForgeModdedServerLike(val minecraftServer: MinecraftServer, val startup
             )
         }
 
-    override fun executeIfPossible(command: Runnable) = minecraftServer.executeIfPossible(command)
+    override fun executeIfPossible(runnable: Runnable) = minecraftServer.executeIfPossible(runnable)
 
     override fun halt(wait: Boolean) = minecraftServer.halt(wait)
 
     override fun executeCommand(command: String, builder: StringBuilder) {
-        executeIfPossible {
+        if (isNotActive) {
+            builder.append("Server is not alive.")
+            return
+        }
+        minecraftServer.executeBlocking {
             val commandSource = object : CommandSource {
                 override fun sendSystemMessage(message: Component) {
                     builder.append(message.string).append("\n")

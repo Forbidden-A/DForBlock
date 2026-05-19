@@ -1,6 +1,7 @@
 package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.ConfigManager
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.kyori.adventure.audience.Audience
 import java.nio.file.Path
@@ -10,8 +11,8 @@ import kotlin.coroutines.resume
 interface MinecraftModdedServerLike {
     val players: Set<PlayerData>
     val statistics: GameStatistics
-    val isStopped: Boolean
-    fun executeIfPossible(command: Runnable)
+    val isNotActive: Boolean
+    fun executeIfPossible(runnable: Runnable)
     fun halt(wait: Boolean)
     fun executeCommand(command: String, builder: StringBuilder)
 }
@@ -52,7 +53,7 @@ class ModdedMinecraftCommunicator(
     private lateinit var latestStatistics: GameStatistics
 
     override suspend fun serverStatistics(): GameStatistics = suspendCancellableCoroutine { continuation ->
-        if (serverLike.isStopped) {
+        if (serverLike.isNotActive) {
             if (continuation.isActive && ::latestStatistics.isInitialized) {
                 continuation.resume(latestStatistics)
             }
@@ -67,11 +68,14 @@ class ModdedMinecraftCommunicator(
     override suspend fun executeCommand(command: String): String = suspendCancellableCoroutine { continuation ->
         val builder = StringBuilder()
         try {
-            serverLike.executeCommand(command, builder)
+            runBlocking { serverLike.executeCommand(command, builder) }
             val result = builder.toString().trim()
             if (continuation.isActive) {
-                if (result.isEmpty()) continuation.resume("Command executed successfully (no text output).")
-                else continuation.resume(result)
+                if (result.isEmpty()) {
+                    continuation.resume("Command executed successfully (no text output).")
+                } else {
+                    continuation.resume(result)
+                }
             }
         } catch (e: Exception) {
             if (continuation.isActive) continuation.resume("Internal Error executing command: ${e.message} ${e.stackTraceToString()}")
