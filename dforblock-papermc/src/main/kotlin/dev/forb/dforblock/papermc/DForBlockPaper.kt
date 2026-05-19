@@ -56,7 +56,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
             serverLike = PaperServerLike(this, server, startup),
             configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { server },
-            isLuckperms = isLuckperms,
+            isLuckperms = { isLuckperms },
             configDir = configDir
         )
 

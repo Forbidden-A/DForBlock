@@ -24,3 +24,8 @@ run
 
 dforblock-hytale/libs*
 dforblock-hytale/server*
+dforblock-hytale/devserver
+**/server**/**
+**/assets/**
+server
+assets

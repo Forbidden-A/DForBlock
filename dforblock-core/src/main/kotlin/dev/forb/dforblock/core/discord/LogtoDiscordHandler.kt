@@ -2,37 +2,57 @@ package dev.forb.dforblock.core.discord
 
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.config.ChannelConfig
+import dev.forb.dforblock.core.config.ContainerElementTextDisplay
 import dev.forb.dforblock.core.config.MessageTemplate
 import dev.forb.dforblock.core.constructMessage
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import kotlinx.coroutines.*
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ConcurrentLinkedDeque
+import kotlin.collections.forEach
+import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 
 object LogtoDiscordHandler {
-    internal val logQueue = ConcurrentLinkedQueue<String>()
+    internal val logQueue = ConcurrentLinkedDeque<String>()
     private var flushJob: Job? = null
 
     private val ansiEscapeRegex = Regex("\u001B\\[[;\\d]*m")
+    private val internetProtocolAddressRegex = Regex("""/?(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?""")
 
     fun enqueue(level: String, message: String) {
-        val cleanMessage = message.replace(ansiEscapeRegex, "")
+        var cleanMessage = message.replace(ansiEscapeRegex, "")
+        cleanMessage = internetProtocolAddressRegex.replace(cleanMessage, "[IP REDACTED]")
         logQueue.add("[$level] $cleanMessage")
     }
+
+    private var _messageSizeLimit: Int? = null
+
+    val messageSizeLimit: Int
+        get() = _messageSizeLimit!!
 
     internal fun flush(): String? {
         if (logQueue.isNotEmpty()) {
             val builder = StringBuilder()
 
-            while (logQueue.isNotEmpty() && builder.length < 1900) {
-                val msg = logQueue.peek()
-                if (builder.length + msg.length > 1900) {
-                    break
-                }
-                builder.append(logQueue.poll()).append("\n")
-            }
+            while (logQueue.isNotEmpty() && builder.length < messageSizeLimit) {
+                val msg = logQueue.peek() ?: break
+                val spaceAvailable = messageSizeLimit - builder.length - 1
 
+                if (msg.length > spaceAvailable) {
+                    if (builder.isEmpty()) {
+                        val chunk = msg.substring(0, messageSizeLimit)
+                        val remainder = msg.substring(messageSizeLimit)
+
+                        builder.append(chunk)
+                        logQueue.poll()
+                        logQueue.addFirst(remainder)
+                    }
+                    break
+                } else {
+                    builder.append(logQueue.poll()).append("\n")
+                }
+            }
             return if (builder.isNotEmpty()) builder.trimEnd().toString() else null
         }
         return null
@@ -41,18 +61,82 @@ object LogtoDiscordHandler {
     fun startFlushing(scope: CoroutineScope, kord: Kord, template: MessageTemplate, targetChannel: ChannelConfig) {
         if (flushJob != null) return
 
+        if (_messageSizeLimit == null) {
+            _messageSizeLimit = when {
+                template.standard != null -> {
+                    val std = template.standard
+
+                    if (std.content?.contains("{batch}") == true) {
+                        2_000 - std.content.replace("{batch}", "").length
+                    } else if (std.embed != null) {
+                        val embed = std.embed
+                        var totalChars = 0
+                        totalChars += embed.title?.replace("{batch}", "")?.length ?: 0
+                        totalChars += embed.description?.replace("{batch}", "")?.length ?: 0
+                        totalChars += embed.authorName?.replace("{batch}", "")?.length ?: 0
+                        totalChars += embed.footerText?.replace("{batch}", "")?.length ?: 0
+                        embed.fields?.forEach { field ->
+                            totalChars += field.name.replace("{batch}", "").length
+                            totalChars += field.value?.replace("{batch}", "")?.length ?: 1
+                        }
+
+                        val maxTotalAvailable = 6_000 - totalChars
+
+                        when {
+                            embed.description?.contains("{batch}") == true ->
+                                min(4_096 - embed.description.replace("{batch}", "").length, maxTotalAvailable)
+
+                            embed.title?.contains("{batch}") == true ->
+                                min(256 - embed.title.replace("{batch}", "").length, maxTotalAvailable)
+
+                            embed.authorName?.contains("{batch}") == true ->
+                                min(256 - embed.authorName.replace("{batch}", "").length, maxTotalAvailable)
+
+                            embed.footerText?.contains("{batch}") == true ->
+                                min(2_048 - embed.footerText.replace("{batch}", "").length, maxTotalAvailable)
+
+                            embed.fields?.any { it.name.contains("{batch}") } == true -> {
+                                val field = embed.fields.first { it.name.contains("{batch}") }
+                                min(256 - field.name.replace("{batch}", "").length, maxTotalAvailable)
+                            }
+
+                            embed.fields?.any { it.value?.contains("{batch}") == true } == true -> {
+                                val field = embed.fields.first { it.value?.contains("{batch}") == true }
+                                min(1_024 - (field.value?.replace("{batch}", "")?.length ?: 1), maxTotalAvailable)
+                            }
+
+                            else -> throw IllegalStateException("Could not find '{batch}' inside template.standard.embed!")
+                        }
+                    } else {
+                        throw IllegalStateException("Template standard content and embed are both null!")
+                    }
+                }
+
+                template.container != null -> {
+                    val display = template.container.elements.filterIsInstance<ContainerElementTextDisplay>()
+                        .firstOrNull { it.text.contains("{batch}") }
+                        ?: throw IllegalStateException("Could not find '{batch}' inside template.container!")
+
+                    4_000 - display.text.replace("{batch}", "").length
+                }
+
+                else -> throw IllegalStateException("Template is empty! Both standard and container are null.")
+            }
+        }
+
         flushJob = scope.launch {
             while (isActive) {
                 val batch = flush()
-                if (batch.isNullOrBlank()) continue
-                try {
-                    kord.rest.channel.createMessage(
-                        Snowflake(targetChannel.channelId),
-                        constructMessage(template, mapOf("{batch}" to batch))
-                    )
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    LOGGER.error { "Failed to create console log batch message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
+                if (!batch.isNullOrBlank()) {
+                    try {
+                        kord.rest.channel.createMessage(
+                            Snowflake(targetChannel.channelId),
+                            constructMessage(template, mapOf("{batch}" to batch))
+                        )
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        LOGGER.error { "Failed to create console log batch message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
+                    }
                 }
                 delay(4.seconds)
             }

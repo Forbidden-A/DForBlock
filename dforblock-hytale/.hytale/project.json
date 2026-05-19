@@ -2,9 +2,9 @@
   "groupId": "dev.forb",
   "artifactId": "dforblock",
   "modName": "DForBlock",
-  "version": "by rootProject",
+  "version": "${version}",
   "buildSystem": "Gradle",
   "language": "Kotlin",
-  "jarPath": "build/libs/dforblock-by rootProject.jar",
+  "jarPath": "build/libs/dforblock-hytale-${version}.jar",
   "buildTask": "shadowJar"
 }

@@ -95,7 +95,7 @@ class DForBlockNeoForge(val configDir: Path) {
             serverLike = NeoForgeServerLike(event.server, startup),
             configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { minecraftServerAudiences?.players() },
-            isLuckperms = isLuckperms,
+            isLuckperms = { isLuckperms },
             configDir = configDir
         )
         dForBlock = DForBlock(configManager?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." }, communicator?:return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock..." })

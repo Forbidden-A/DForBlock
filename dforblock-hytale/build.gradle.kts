@@ -1,102 +1,71 @@
 plugins {
-    java
+    alias(libs.plugins.scaffoldit)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.shadow)
 }
 
-group = "dev.forb.dforblock"
+group = "dev.forb"
 version = rootProject.version
 
 repositories {
     mavenCentral()
 }
 
-val serverJarPath = file("libs/HytaleServer.jar")
-val projectServerJar = file("server/HytaleServer.jar")
-val siblingServerJar = file("../server/HytaleServer.jar")
+val shadowed by configurations.registering
+configurations.implementation.get().extendsFrom(shadowed)
 
-dependencies {
-    // Use HytaleServer.jar from libs folder, or fallback to server folders
-    if (serverJarPath.exists()) {
-        compileOnly(files(serverJarPath))
-    } else if (projectServerJar.exists()) {
-        compileOnly(files(projectServerJar))
-    } else if (siblingServerJar.exists()) {
-        compileOnly(files(siblingServerJar))
-    } else {
-        compileOnly(files("libs/HytaleServer.jar"))
-    }
-
-
-    // JSR305 annotations (@Nonnull, @Nullable)
-    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation(project(":dforblock-core", configuration = "shadow"))
-    implementation(libs.kotlin.logging)
-    implementation(libs.kord.core)
-    implementation(libs.kotlin.stdlib)
-    implementation(libs.json5)
+repositories {
+    maven("https://repo.codemc.io/repository/ArikSquad/")
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
+dependencies {
+    shadowed(project(mapOf("path" to ":dforblock-core", "configuration" to "shadow")))
+
+    shadowed("eu.mikart.adventure:adventure-platform-hytale:1.0.3")
+    shadowed(libs.adventure.legacy)
+    shadowed(libs.adventure.text)
+    shadowed(libs.adventure.minimessage)
+
+    shadowed("org.slf4j:slf4j-api:2.0.13")
+    shadowed("org.slf4j:slf4j-jdk14:2.0.13")
 }
 
 tasks.shadowJar {
+    configurations = listOf(project.configurations["shadowed"])
     archiveClassifier.set("")
-    // Exclude server classes from the final JAR
+    relocate("eu.mikart.adventure", "dev.forb.dforblock.shadow.adventure")
+
+    mergeServiceFiles()
+}
+
+hytale {
+    usePatchline("release")
+    useVersion("latest")
     dependencies {
-
-        exclude { it.moduleGroup == "com.hypixel" }
+        useKotlin()
+        compileOnly(libs.kotlin.logging.asString())
+        compileOnly(libs.kord.core.asString())
+        compileOnly(libs.json5.asString())
     }
 }
 
-// Disable the default jar task to avoid conflicts with shadowJar
-tasks.named("jar") { enabled = false }
+tasks.processResources {
+    filteringCharset = "UTF-8"
+    inputs.property("version", project.version)
+    from(rootProject.file("config/core.json5"))
+    from(rootProject.file("config/channels.json5"))
+    from(rootProject.file("config/permissions.json5"))
+    from(rootProject.file("config/messages.json5"))
 
-tasks.named("build") { dependsOn(tasks.shadowJar) }
-
-// Task to copy server JAR to libs folder if not present
-tasks.register("copyServerJar") {
-    description = "Task to copy server JAR to libs folder if not present"
-    doLast {
-        val destJar = file("libs/HytaleServer.jar")
-        if (!destJar.exists()) {
-            val sources = listOf(file("server/HytaleServer.jar"), file("../server/HytaleServer.jar"))
-            for (src in sources) {
-                if (src.exists()) {
-                    copy {
-                        from(src)
-                        into("libs")
-                    }
-                    break
-                }
-            }
-        }
+    filesMatching("manifest.json") {
+        expand(
+            mapOf(
+                "version" to project.version,
+                "hytaleServerVersion" to libs.versions.hytale.get()
+            )
+        )
     }
 }
 
-tasks.named("compileKotlin") { dependsOn("copyServerJar") }
-
-// Deploy plugin JAR to server mods folder
-tasks.register("deployToServer", type = Copy::class) {
-    description = "Deploy plugin JAR to server mods folder"
-    // Using 'from shadowJar' automatically adds task dependency and proper input tracking
-    from(tasks.shadowJar)
-    into("server/mods")
-    doLast {
-        println("Deployed to server/mods/")
-    }
-}
-
-// Watch for changes and auto-rebuild (useful during development)
-tasks.register("watch") {
-    description = "Watch for changes and auto-rebuild (useful during development)"
-    doLast {
-        println("Watching for changes... Press Ctrl+C to stop.")
-        println("Run 'gradle build --continuous' for auto-rebuild on file changes.")
-    }
-}
+fun Provider<MinimalExternalModuleDependency>.asString(): String =
+    get().run { "$group:$name:$version" }

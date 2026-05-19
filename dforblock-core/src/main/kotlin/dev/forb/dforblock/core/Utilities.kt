@@ -8,6 +8,7 @@ import dev.kord.core.Kord
 import dev.kord.core.entity.interaction.GuildInteraction
 import dev.kord.rest.builder.component.separator
 import dev.kord.rest.builder.component.textDisplay
+import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.MessageBuilder
 import dev.kord.rest.builder.message.container
 import dev.kord.rest.builder.message.embed
@@ -50,7 +51,7 @@ val Duration.beautify: String
         }.trim()
     }
 
-fun String.withoutMinecraftFormatting(): String {
+fun String.withoutFormatting(): String {
     val strippedMiniMessage = MiniMessage.miniMessage().stripTags(this)
     val component = LegacyComponentSerializer.legacyAmpersand().deserialize(strippedMiniMessage)
     return PlainTextComponentSerializer.plainText().serialize(component)
@@ -103,7 +104,7 @@ fun buildPlayerPlaceholders(
     )
 }
 
-fun prepareMinecraftMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
+fun prepareMiniMessage(payload: DiscordMessageData, channelName: String, template: String): Component {
     val content =
         if (!payload.isAttachment) payload.content else "<click:open_url:'${payload.attachmentLink ?: ""}'><hover:show_text:'<gray>Click to open attachment'><aqua>${payload.content}</aqua></hover></click>"
     val processedString = template.withPlaceholders(
@@ -212,6 +213,9 @@ fun constructMessage(messageTemplate: MessageTemplate, placeholders: Map<String,
                 }
                 description = messageTemplate.standard.embed.description?.withPlaceholders(placeholders)
                 title = messageTemplate.standard.embed.title?.withPlaceholders(placeholders)
+                messageTemplate.standard.embed.fields?.forEach { field ->
+                    field(field.name, field.inline) { field.value ?: EmbedBuilder.ZERO_WIDTH_SPACE }
+                }
             }
         }
     }

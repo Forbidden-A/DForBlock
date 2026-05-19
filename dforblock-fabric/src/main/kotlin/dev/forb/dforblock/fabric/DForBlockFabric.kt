@@ -65,7 +65,7 @@ class DForBlockFabric : ModInitializer {
             communicator = MinecraftCommunicator(
                 serverLike = FabricServerLike(server, startup),
                 configManager = configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
-                isLuckperms = isLuckperms,
+                isLuckperms = { isLuckperms },
                 configDir = configDir,
                 playerAudience = { minecraftServerAudiences?.players() }
             )

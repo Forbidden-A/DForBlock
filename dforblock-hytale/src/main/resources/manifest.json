@@ -1,10 +1,18 @@
 {
-  "Group": "dev.forb",
-  "Name": "DForBlock",
-  "Version": "by rootProject",
-  "Description": "A Hytale <-> discord bridge",
-  "Authors": [{"Name": "ForbiddenBA"}],
-  "Main": "dev.forb.dforblock.DForBlockPlugin",
-  "LoadOrder": "POSTWORLD",
-  "IncludesAssetPack": true
+    "Group": "dev.forb",
+    "Name": "DForBlock",
+    "Version": "1.0.1-beta.3",
+    "Description": "A Hytale <-> discord bridge",
+    "Authors": [
+        {
+            "Name": "Forbidden"
+        }
+    ],
+    "DisabledByDefault": false,
+    "IncludesAssetPack": false,
+    "OptionalDependencies": {
+        "LuckPerms:LuckPerms": "*"
+    },
+    "ServerVersion": "${hytaleServerVersion}",
+    "Main": "dev.forb.dforblock.hytale.DForBlockHytalePlugin"
 }

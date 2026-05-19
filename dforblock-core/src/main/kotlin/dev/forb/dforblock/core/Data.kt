@@ -26,18 +26,18 @@ sealed class PlayerData {
     abstract val displayName: String?
 
     fun qualifiedName(configManager: ConfigManager, communicator: IBlockyCommunicator): String {
-        if (communicator.isLuckperms) {
+        if (communicator.isLuckperms()) {
             return luckPermsQualifiedName(
                 configManager.core.playerQualifier,
                 uuid,
                 name,
                 displayName
-            ).withoutMinecraftFormatting()
+            ).withoutFormatting()
         }
 
         val placeholders = mapOf(
             "{playerName}" to name,
-            "{playerQualifiedName}" to (displayName ?: name).withoutMinecraftFormatting(),
+            "{playerQualifiedName}" to (displayName ?: name).withoutFormatting(),
             "{playerUuid}" to uuid.toString(),
             "{prefix}" to "",
             "{suffix}" to ""
@@ -47,7 +47,7 @@ sealed class PlayerData {
     }
 
     fun buildAvatarUrl(configManager: ConfigManager): String? = when (this) {
-        is Hytale -> configManager.core.minecraftAvatarProviderUrl
+        is Hytale -> configManager.core.hytaleAvatarProviderUrl
         is Minecraft -> configManager.core.minecraftAvatarProviderUrl
     }?.withPlaceholders("{username}" to name, "{uuid}" to uuid.toString())
 
