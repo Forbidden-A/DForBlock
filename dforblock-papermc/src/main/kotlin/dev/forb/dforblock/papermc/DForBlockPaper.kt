@@ -54,19 +54,16 @@ class DForBlockPaper : JavaPlugin(), Listener {
         configManager = ConfigManager(configDir, JSON)
         communicator = PaperCommunicator(
             configDir = configDir,
-            isLuckperms = isLuckperms,
+            isLuckperms = { isLuckperms },
             plugin = this
         )
 
         dForBlockOrchestrator = DForBlockOrchestrator(
-            configManager
-                ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dforBlock..." },
-            communicator
-                ?: return LOGGER.error { "Unexpected state, 'communicator is null' while creating dforBlock..." }
+            configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlockOrchestrator..." },
+            communicator ?: return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlockOrchestrator..." }
         )
 
-        dForBlockOrchestrator?.start()
-            ?: return LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforBlock..." }
+        dForBlockOrchestrator?.start() ?: return LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dForBlock..." }
         server.pluginManager.registerEvents(this, this)
 
         if (configManager?.messages?.serverLogs != null) {
@@ -90,7 +87,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
 
     override fun onDisable() {
         runBlocking {
-            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Plugin disabled but dforBlock was already null..." }
+            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Plugin disabled but dForBlockOrchestrator was already null..." }
         }
 
         consoleAppender?.apply {

@@ -21,7 +21,7 @@ class ModdedMinecraftCommunicator(
     val serverLike: MinecraftModdedServerLike,
     val configManager: ConfigManager,
     val playerAudience: () -> Audience?,
-    override val isLuckperms: Boolean,
+    override val isLuckperms: () -> Boolean,
     override val configDir: Path,
 ) : IBlockyCommunicator {
 
@@ -42,7 +42,7 @@ class ModdedMinecraftCommunicator(
         val template = configManager.messages.discordUserChats ?: return
         val channelName =
             configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId }?.key ?: return
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
+        val kyoriComponent = prepareMiniMessage(payload, channelName, template)
         playerAudience()?.sendMessage(kyoriComponent)
             ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
     }

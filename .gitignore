@@ -21,3 +21,11 @@ hs_err_pid*
 run
 
 .kotlin
+
+dforblock-hytale/libs*
+dforblock-hytale/server*
+dforblock-hytale/devserver
+**/server**/**
+**/assets/**
+server
+assets

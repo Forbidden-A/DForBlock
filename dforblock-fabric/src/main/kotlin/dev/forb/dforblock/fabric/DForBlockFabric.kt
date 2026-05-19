@@ -64,19 +64,13 @@ class DForBlockFabric : ModInitializer {
             configManager = ConfigManager(configDir, JSON)
             communicator = ModdedMinecraftCommunicator(
                 serverLike = FabricModdedServerLike(server, startup),
-                configManager = configManager
-                    ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
-                isLuckperms = isLuckperms,
+                configManager = configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
+                isLuckperms = { isLuckperms },
                 configDir = configDir,
                 playerAudience = { minecraftServerAudiences?.players() }
             )
-            dForBlockOrchestrator = DForBlockOrchestrator(
-                configManager
-                    ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." },
-                communicator
-                    ?: return@register LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock.." })
-            dForBlockOrchestrator?.start()
-                ?: return@register LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforblock..'" }
+            dForBlockOrchestrator = DForBlockOrchestrator(configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." }, communicator ?: return@register LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock.." })
+            dForBlockOrchestrator?.start() ?: return@register LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforblock..'" }
             if (configManager?.messages?.serverLogs != null) {
                 consoleAppender = object :
                     AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
@@ -96,7 +90,7 @@ class DForBlockFabric : ModInitializer {
         }
 
         ServerLifecycleEvents.SERVER_STOPPED.register { _ ->
-            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
+            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Server stopped but dForBlockOrchestrator was already null..." }
             consoleAppender?.apply {
                 (LogManager.getRootLogger() as Logger).removeAppender(this)
                 stop()

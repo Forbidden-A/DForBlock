@@ -6,7 +6,7 @@ interface IBlockyCommunicator {
 
     val configDir: Path
 
-    val isLuckperms: Boolean
+    val isLuckperms: () -> Boolean
 
     suspend fun heartbeat(): Boolean
 

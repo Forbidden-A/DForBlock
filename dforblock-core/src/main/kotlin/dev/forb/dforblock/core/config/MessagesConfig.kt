@@ -2,6 +2,7 @@ package dev.forb.dforblock.core.config
 
 import dev.kord.common.Color
 import dev.kord.common.entity.SeparatorSpacingSize
+import dev.kord.rest.builder.message.EmbedBuilder
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -49,6 +50,19 @@ data class StandardMessageTemplate(
 }
 
 @Serializable
+data class EmbedFieldConfig(
+    val name: String,
+    val value: String? = null,
+    val inline: Boolean = false
+) {
+    init {
+        require(name.isNotBlank()) {
+            "Configuration error: Embed field name cannot be blank."
+        }
+    }
+}
+
+@Serializable
 data class EmbedConfig(
     val title: String? = null,
     val description: String? = null,
@@ -60,10 +74,16 @@ data class EmbedConfig(
 
     val footerText: String? = null,
     val footerIconUrl: String? = null,
+
+    val fields: List<EmbedFieldConfig>? = null
 ) {
     init {
-        require(authorName != null || title != null || description != null || footerText != null) {
+        require(authorName != null || title != null || description != null || footerText != null || !fields.isNullOrEmpty()) {
             "Configuration error: An embed cannot be completely empty."
+        }
+
+        fields?.let {
+            require(it.size <= EmbedBuilder.Limits.fieldCount)
         }
 
         if (footerIconUrl != null)
@@ -72,8 +92,9 @@ data class EmbedConfig(
             }
 
         if (authorUrl != null || authorIcon != null)
-            require(authorName != null) { "Configuration Error: Cannot have 'authorUrl' or 'authorIcon' without 'authorName'." }
-
+            require(authorName != null) {
+                "Configuration Error: Cannot have 'authorUrl' or 'authorIcon' without 'authorName'."
+            }
     }
 }
 

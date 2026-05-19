@@ -87,7 +87,7 @@ class DForBlockNeoForge(val configDir: Path) {
             configManager = configManager
                 ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { minecraftServerAudiences?.players() },
-            isLuckperms = isLuckperms,
+            isLuckperms = { isLuckperms },
             configDir = configDir
         )
         dForBlockOrchestrator = DForBlockOrchestrator(
