@@ -37,10 +37,10 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:$loaderVersion")
     implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
     implementation("net.fabricmc:fabric-language-kotlin:$kotlinLoaderVersion")
-    include(implementation("net.kyori:adventure-platform-fabric:${kyoriAdventureFabricVersion}")) {  }
-    include(implementation(libs.adventure.legacy.get())) {  }
-    include(implementation(libs.adventure.text.get())) {  }
-    include(implementation(project(":dforblock-core", configuration = "shadow"))) {  }
+    include(implementation("net.kyori:adventure-platform-fabric:${kyoriAdventureFabricVersion}")) { }
+    include(implementation(libs.adventure.legacy.get())) { }
+    include(implementation(libs.adventure.text.get())) { }
+    include(implementation(project(":dforblock-core", configuration = "shadow"))) { }
     compileOnly(libs.kotlin.logging)
 }
 

@@ -42,7 +42,8 @@ class ModdedMinecraftCommunicator(
         val channelName =
             configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId }?.key ?: return
         val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
-        playerAudience()?.sendMessage(kyoriComponent) ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
+        playerAudience()?.sendMessage(kyoriComponent)
+            ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =
@@ -55,8 +56,7 @@ class ModdedMinecraftCommunicator(
             if (continuation.isActive && ::latestStatistics.isInitialized) {
                 continuation.resume(latestStatistics)
             }
-        }
-        else {
+        } else {
             latestStatistics = serverLike.statistics
             continuation.resume(latestStatistics)
         }

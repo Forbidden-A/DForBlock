@@ -44,7 +44,7 @@ class DForBlockFabric : ModInitializer {
 
     var consoleAppender: AbstractAppender? = null
 
-    var dForBlock: DForBlock? = null
+    var dForBlockOrchestrator: DForBlockOrchestrator? = null
         private set
     var communicator: IBlockyCommunicator? = null
         private set
@@ -64,13 +64,19 @@ class DForBlockFabric : ModInitializer {
             configManager = ConfigManager(configDir, JSON)
             communicator = ModdedMinecraftCommunicator(
                 serverLike = FabricModdedServerLike(server, startup),
-                configManager = configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
+                configManager = configManager
+                    ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator.." },
                 isLuckperms = isLuckperms,
                 configDir = configDir,
                 playerAudience = { minecraftServerAudiences?.players() }
             )
-            dForBlock = DForBlock(configManager ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." }, communicator ?: return@register LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock.." })
-            dForBlock?.start() ?: return@register LOGGER.error { "Unexpected state, 'dFroBlock is null' while starting dforblock..'" }
+            dForBlockOrchestrator = DForBlockOrchestrator(
+                configManager
+                    ?: return@register LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." },
+                communicator
+                    ?: return@register LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock.." })
+            dForBlockOrchestrator?.start()
+                ?: return@register LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforblock..'" }
             if (configManager?.messages?.serverLogs != null) {
                 consoleAppender = object :
                     AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
@@ -90,14 +96,14 @@ class DForBlockFabric : ModInitializer {
         }
 
         ServerLifecycleEvents.SERVER_STOPPED.register { _ ->
-            dForBlock?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
+            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
             consoleAppender?.apply {
                 (LogManager.getRootLogger() as Logger).removeAppender(this)
                 stop()
             }
             consoleAppender = null
             minecraftServerAudiences = null
-            dForBlock = null
+            dForBlockOrchestrator = null
             communicator = null
             configManager = null
         }
@@ -113,7 +119,7 @@ class DForBlockFabric : ModInitializer {
                     displayName = player.displayName.string
                 )
             )
-            dForBlock?.launch { onBlockyMessageReceive(payload) }
+            dForBlockOrchestrator?.launch { onBlockyMessageReceive(payload) }
         }
 
         ServerPlayerEvents.JOIN.register { player ->
@@ -124,7 +130,7 @@ class DForBlockFabric : ModInitializer {
                     player.displayName.string
                 )
             )
-            dForBlock?.launch { onPlayerJoin(payload) }
+            dForBlockOrchestrator?.launch { onPlayerJoin(payload) }
         }
 
         ServerPlayerEvents.LEAVE.register { player ->
@@ -135,7 +141,7 @@ class DForBlockFabric : ModInitializer {
                     player.displayName.string
                 )
             )
-            dForBlock?.launch { onPlayerLeave(payload) }
+            dForBlockOrchestrator?.launch { onPlayerLeave(payload) }
         }
 
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, source ->
@@ -150,7 +156,7 @@ class DForBlockFabric : ModInitializer {
                 ),
                 deathMessage = source.getLocalizedDeathMessage(entity).string,
             )
-            dForBlock?.launch { onPlayerDeath(payload) }
+            dForBlockOrchestrator?.launch { onPlayerDeath(payload) }
         }
 
     }

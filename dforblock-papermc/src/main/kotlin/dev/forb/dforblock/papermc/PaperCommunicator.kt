@@ -1,10 +1,6 @@
 package dev.forb.dforblock.papermc
 
-import dev.forb.dforblock.core.DiscordMessageData
-import dev.forb.dforblock.core.GameStatistics
-import dev.forb.dforblock.core.IBlockyCommunicator
-import dev.forb.dforblock.core.LOGGER
-import dev.forb.dforblock.core.prepareMinecraftMiniMessage
+import dev.forb.dforblock.core.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.apache.logging.log4j.LogManager
@@ -55,7 +51,8 @@ class PaperCommunicator(
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = plugin.configManager?.messages?.discordUserChats ?: return
         val channelName =
-            plugin.configManager?.channels?.entries?.firstOrNull { (_, v) -> v.channelId == payload.channelId }?.key ?: return
+            plugin.configManager?.channels?.entries?.firstOrNull { (_, v) -> v.channelId == payload.channelId }?.key
+                ?: return
         val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
         plugin.server.sendMessage(kyoriComponent)
     }
@@ -66,15 +63,16 @@ class PaperCommunicator(
             val currentThreadId = Thread.currentThread().threadId()
             val logger = LogManager.getRootLogger() as org.apache.logging.log4j.core.Logger
 
-            val threadLocalAppender = object : AbstractAppender("Capture-$currentThreadId", null, null, true, Property.EMPTY_ARRAY) {
-                override fun append(event: LogEvent) {
-                    if (Thread.currentThread().threadId() == currentThreadId) {
-                        val msg = event.message.formattedMessage
-                        val cleanMsg = msg.replace(Regex("^\\[Server:?|^\\[Console:?"), "").trim()
-                        builder.append(cleanMsg).append("\n")
+            val threadLocalAppender =
+                object : AbstractAppender("Capture-$currentThreadId", null, null, true, Property.EMPTY_ARRAY) {
+                    override fun append(event: LogEvent) {
+                        if (Thread.currentThread().threadId() == currentThreadId) {
+                            val msg = event.message.formattedMessage
+                            val cleanMsg = msg.replace(Regex("^\\[Server:?|^\\[Console:?"), "").trim()
+                            builder.append(cleanMsg).append("\n")
+                        }
                     }
                 }
-            }
             try {
                 threadLocalAppender.start()
                 logger.addAppender(threadLocalAppender)
@@ -83,20 +81,23 @@ class PaperCommunicator(
                     if (continuation.isActive) {
                         val result = builder.toString().trim()
                         if (result.isBlank())
-                            continuation.resume(if (success) "Command executed successfully (no text output)." else {
-                                "Unknown command '${command.split(' ').firstOrNull() ?: "Unknown"}'."
-                            })
+                            continuation.resume(
+                                if (success) "Command executed successfully (no text output)." else {
+                                    "Unknown command '${command.split(' ').firstOrNull() ?: "Unknown"}'."
+                                }
+                            )
                         else
                             continuation.resume(result)
                     }
                 } catch (e: CommandException) {
                     if (continuation.isActive) {
                         val result = builder.toString().trim()
-                        if (result.isNotBlank()) { continuation.resume(result) }
-                        else {
+                        if (result.isNotBlank()) {
+                            continuation.resume(result)
+                        } else {
                             val causeMessage = e.cause?.message ?: e.message ?: "Malformed command."
-                            val cleanCause = causeMessage.replace("com.mojang.brigadier.exceptions.CommandSyntaxException: ", "")
-                            continuation.resume("Command Error:\n$cleanCause")
+                            val cleanCause = causeMessage.replace("com.mojang.brigadier.exceptions.", "")
+                            continuation.resume(cleanCause)
                         }
                     }
                     LOGGER.warn { "Command run failure: ${e.cause?.message ?: e.message ?: e.stackTraceToString()}" }

@@ -1,6 +1,6 @@
 package dev.forb.dforblock.core.discord
 
-import dev.forb.dforblock.core.DForBlock
+import dev.forb.dforblock.core.DForBlockOrchestrator
 import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.config.ConfigManager
@@ -22,7 +22,7 @@ import kotlinx.coroutines.*
 import kotlin.time.Duration.Companion.seconds
 
 class DiscordBotManager(
-    private val dForBlock: DForBlock,
+    private val dForBlockOrchestrator: DForBlockOrchestrator,
     private val configManager: ConfigManager,
     private val communicator: IBlockyCommunicator,
 ) {
@@ -37,7 +37,7 @@ class DiscordBotManager(
         if (throwable is CancellationException || throwable.toString().contains("CancellationException")) {
             LOGGER.debug { "Coroutine cancelled $context, ${throwable.message}\n${throwable.stackTraceToString()}" }
         } else {
-            LOGGER.error { "Unhandled exception in botScope: ${throwable.message}\n${throwable.stackTraceToString()}" }
+            LOGGER.error { "Unhandled exception in bot scopes: ${throwable.message}\n${throwable.stackTraceToString()}" }
         }
     }
 
@@ -102,7 +102,7 @@ class DiscordBotManager(
                     isReady = true
                     LOGGER.info { "DForBlock is now ready." }
                     taskScheduler?.start() ?: LOGGER.error { "Kord is ready but taskScheduler is null." }
-                    dForBlock.onServerStart()
+                    dForBlockOrchestrator.onServerStart()
                 }
 
                 kord.on<GuildChatInputCommandInteractionCreateEvent> { onDiscordChatCommand() }

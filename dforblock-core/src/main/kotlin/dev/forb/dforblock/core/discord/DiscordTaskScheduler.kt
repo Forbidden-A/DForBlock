@@ -110,6 +110,7 @@ class DiscordTaskScheduler(
                             isDead = false
                             LOGGER.debug { "Server is alive." }
                         }
+
                         else -> {
                             if (isDead)
                                 continue
