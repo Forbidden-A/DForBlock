@@ -54,9 +54,9 @@ class PaperCommunicator(
 
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = plugin.configManager?.messages?.discordUserChats ?: return
-        val channel =
-            plugin.configManager?.channels?.entries?.firstOrNull { (_, v) -> v.channelId == payload.channelId } ?: return
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, channel.key, template)
+        val channelName =
+            plugin.configManager?.channels?.entries?.firstOrNull { (_, v) -> v.channelId == payload.channelId }?.key ?: return
+        val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
         plugin.server.sendMessage(kyoriComponent)
     }
 

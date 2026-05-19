@@ -39,14 +39,14 @@ class ModdedMinecraftCommunicator(
 
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = configManager.messages.discordUserChats ?: return
-        val channel =
-            configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId } ?: return
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, channel.key, template)
+        val channelName =
+            configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId }?.key ?: return
+        val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
         playerAudience()?.sendMessage(kyoriComponent) ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =
-        serverLike.players.map { it.qualifiedName(configManager, this) }.toSet()
+        serverLike.players.mapTo(mutableSetOf()) { it.qualifiedName(configManager, this) }
 
     private lateinit var latestStatistics: GameStatistics
 

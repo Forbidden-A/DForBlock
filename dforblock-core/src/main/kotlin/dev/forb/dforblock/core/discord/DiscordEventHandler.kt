@@ -280,9 +280,12 @@ class DiscordEventHandler(
             flags = MessageFlags(MessageFlag.IsComponentsV2)
             container {
                 accentColor = Color(Random.nextInt(0..0xFFFF))
-                textDisplay("**Executed:** ${commandContent.take(50)}")
+                val execution = "**Executed:** ${commandContent.take(50)}"
+                textDisplay(execution)
                 separator(SeparatorSpacingSize.Small)
-                textDisplay("**Result:** ```txt\n${commandResult.take(500)}```")
+                val resultTitle = "**Result:** ```txt"
+                val commandResult = commandResult.take(((4000 - execution.length) - resultTitle.length) - 3)
+                textDisplay("$resultTitle\n$commandResult```")
             }
         }
     }
