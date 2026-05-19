@@ -101,14 +101,14 @@ class DiscordTaskScheduler(
             var isDead = false
             while (isActive) {
                 delay(configManager.core.watchdogInterval.minutes)
-                LOGGER.info { "Checking heartbeat with a timeout of ${configManager.core.watchdogTimeout} second(s)..." }
+                LOGGER.debug { "Checking heartbeat with a timeout of ${configManager.core.watchdogTimeout} second(s)..." }
                 try {
                     val isAlive =
                         withTimeoutOrNull(configManager.core.watchdogTimeout.seconds) { communicator.heartbeat() }
                     when (isAlive) {
                         true -> {
                             isDead = false
-                            LOGGER.info { "Server is alive." }
+                            LOGGER.debug { "Server is alive." }
                         }
 
                         else -> {

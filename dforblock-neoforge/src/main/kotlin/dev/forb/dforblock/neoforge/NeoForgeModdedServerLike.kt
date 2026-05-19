@@ -1,7 +1,7 @@
 package dev.forb.dforblock.neoforge
 
 import dev.forb.dforblock.core.GameStatistics
-import dev.forb.dforblock.core.MinecraftServerLike
+import dev.forb.dforblock.core.MinecraftModdedServerLike
 import dev.forb.dforblock.core.PlayerData
 import net.minecraft.commands.CommandSource
 import net.minecraft.network.chat.Component
@@ -9,9 +9,9 @@ import net.minecraft.server.MinecraftServer
 import net.minecraft.server.permissions.PermissionSet
 import kotlin.time.Instant
 
-class NeoForgeServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftServerLike {
-    override val isStopped: Boolean
-        get() = minecraftServer.isStopped
+class NeoForgeModdedServerLike(val minecraftServer: MinecraftServer, val startup: Instant) : MinecraftModdedServerLike {
+    override val isNotActive: Boolean
+        get() = minecraftServer.isShutdown
 
     override val players: Set<PlayerData>
         get() = minecraftServer.playerList.players.map { minecraftPlayer ->
@@ -48,12 +48,16 @@ class NeoForgeServerLike(val minecraftServer: MinecraftServer, val startup: Inst
             )
         }
 
-    override fun executeIfPossible(command: Runnable) = minecraftServer.executeIfPossible(command)
+    override fun executeIfPossible(runnable: Runnable) = minecraftServer.executeIfPossible(runnable)
 
     override fun halt(wait: Boolean) = minecraftServer.halt(wait)
 
     override fun executeCommand(command: String, builder: StringBuilder) {
-        executeIfPossible {
+        if (isNotActive) {
+            builder.append("Server is not alive.")
+            return
+        }
+        minecraftServer.executeBlocking {
             val commandSource = object : CommandSource {
                 override fun sendSystemMessage(message: Component) {
                     builder.append(message.string).append("\n")

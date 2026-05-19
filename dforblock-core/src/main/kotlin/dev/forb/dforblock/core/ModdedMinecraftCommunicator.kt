@@ -1,23 +1,24 @@
 package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.ConfigManager
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.kyori.adventure.audience.Audience
 import java.nio.file.Path
 import java.util.concurrent.RejectedExecutionException
 import kotlin.coroutines.resume
 
-interface MinecraftServerLike {
+interface MinecraftModdedServerLike {
     val players: Set<PlayerData>
     val statistics: GameStatistics
-    val isStopped: Boolean
-    fun executeIfPossible(command: Runnable)
+    val isNotActive: Boolean
+    fun executeIfPossible(runnable: Runnable)
     fun halt(wait: Boolean)
     fun executeCommand(command: String, builder: StringBuilder)
 }
 
-class MinecraftCommunicator(
-    val serverLike: MinecraftServerLike,
+class ModdedMinecraftCommunicator(
+    val serverLike: MinecraftModdedServerLike,
     val configManager: ConfigManager,
     val playerAudience: () -> Audience?,
     override val isLuckperms: Boolean,
@@ -39,24 +40,24 @@ class MinecraftCommunicator(
 
     override fun broadcastMessage(payload: DiscordMessageData) {
         val template = configManager.messages.discordUserChats ?: return
-        val channel =
-            configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId } ?: return
-        val kyoriComponent = prepareMinecraftMiniMessage(payload, channel.key, template)
-        playerAudience()?.sendMessage(kyoriComponent) ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
+        val channelName =
+            configManager.channels.entries.firstOrNull { (k, v) -> v.channelId == payload.channelId }?.key ?: return
+        val kyoriComponent = prepareMinecraftMiniMessage(payload, channelName, template)
+        playerAudience()?.sendMessage(kyoriComponent)
+            ?: LOGGER.error { "Unexpected state, 'player audience is null', please report this.." }
     }
 
     override fun onlinePlayers(): Set<String> =
-        serverLike.players.map { it.qualifiedName(configManager, this) }.toSet()
+        serverLike.players.mapTo(mutableSetOf()) { it.qualifiedName(configManager, this) }
 
     private lateinit var latestStatistics: GameStatistics
 
     override suspend fun serverStatistics(): GameStatistics = suspendCancellableCoroutine { continuation ->
-        if (serverLike.isStopped) {
+        if (serverLike.isNotActive) {
             if (continuation.isActive && ::latestStatistics.isInitialized) {
                 continuation.resume(latestStatistics)
             }
-        }
-        else {
+        } else {
             latestStatistics = serverLike.statistics
             continuation.resume(latestStatistics)
         }
@@ -67,11 +68,14 @@ class MinecraftCommunicator(
     override suspend fun executeCommand(command: String): String = suspendCancellableCoroutine { continuation ->
         val builder = StringBuilder()
         try {
-            serverLike.executeCommand(command, builder)
+            runBlocking { serverLike.executeCommand(command, builder) }
             val result = builder.toString().trim()
             if (continuation.isActive) {
-                if (result.isEmpty()) continuation.resume("Command executed successfully (no text output).")
-                else continuation.resume(result)
+                if (result.isEmpty()) {
+                    continuation.resume("Command executed successfully (no text output).")
+                } else {
+                    continuation.resume(result)
+                }
             }
         } catch (e: Exception) {
             if (continuation.isActive) continuation.resume("Internal Error executing command: ${e.message} ${e.stackTraceToString()}")

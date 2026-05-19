@@ -72,10 +72,10 @@ neoForge {
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
             programArguments.addAll(
-                    "--mod", modId,
-                    "--all",
-                    "--output", file("src/generated/resources/").absolutePath,
-                    "--existing", file("src/main/resources/").absolutePath
+                "--mod", modId,
+                "--all",
+                "--output", file("src/generated/resources/").absolutePath,
+                "--existing", file("src/main/resources/").absolutePath
             )
         }
 
@@ -102,8 +102,8 @@ sourceSets.main.get().resources.srcDir("src/generated/resources")
 
 dependencies {
     implementation("thedarkcolour:kotlinforforge-neoforge:6.2.0")
-    jarJar(implementation(project(path = ":dforblock-core", configuration = "shadow"))) {  }
-    jarJar(implementation("net.kyori:adventure-platform-neoforge:${project.property("kyori_adventure_neoforge_version")}")) {  }
+    jarJar(implementation(project(path = ":dforblock-core", configuration = "shadow"))) { }
+    jarJar(implementation("net.kyori:adventure-platform-neoforge:${project.property("kyori_adventure_neoforge_version")}")) { }
     compileOnly(libs.kotlin.logging)
     compileOnly(libs.json5)
 
@@ -124,17 +124,17 @@ tasks.processResources {
 val generateModMetadata = tasks.register<ProcessResources>("generateModMetadata") {
     description = modDescription
     val replaceProperties = mapOf(
-            "minecraft_version" to minecraftVersion,
-            "minecraft_version_range" to minecraftVersionRange,
-            "neo_version" to neoVersion,
-            "neo_version_range" to neoVersionRange,
-            "loader_version_range" to loaderVersionRange,
-            "mod_id" to modId,
-            "mod_name" to modName,
-            "mod_license" to modLicense,
-            "mod_version" to modVersion,
-            "mod_authors" to modAuthors,
-            "mod_description" to modDescription
+        "minecraft_version" to minecraftVersion,
+        "minecraft_version_range" to minecraftVersionRange,
+        "neo_version" to neoVersion,
+        "neo_version_range" to neoVersionRange,
+        "loader_version_range" to loaderVersionRange,
+        "mod_id" to modId,
+        "mod_name" to modName,
+        "mod_license" to modLicense,
+        "mod_version" to modVersion,
+        "mod_authors" to modAuthors,
+        "mod_description" to modDescription
     )
     inputs.properties(replaceProperties)
     expand(replaceProperties)

@@ -19,12 +19,12 @@ val JSON = Json {
 /*
 * This is the core of this project
 *  */
-class DForBlock(private val configManager: ConfigManager, private val communicator: IBlockyCommunicator) {
+class DForBlockOrchestrator(private val configManager: ConfigManager, private val communicator: IBlockyCommunicator) {
 
     var botManager: DiscordBotManager? = null
         private set
 
-    fun launch(block: suspend DForBlock.() -> Unit) = botManager?.botScope?.launch { block() }
+    fun launch(block: suspend DForBlockOrchestrator.() -> Unit) = botManager?.botScope?.launch { block() }
 
     @OptIn(PrivilegedIntent::class)
     fun start() {
@@ -67,8 +67,7 @@ class DForBlock(private val configManager: ConfigManager, private val communicat
         if (!template.isEnabled) return@let
 
         val placeholders = (
-                buildCommonPlaceholders(communicator)
-                        + buildPlayerPlaceholders(
+                buildCommonPlaceholders(communicator) + buildPlayerPlaceholders(
                     payload.playerIdentity,
                     configManager,
                     communicator

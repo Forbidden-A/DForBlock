@@ -1,15 +1,6 @@
 package dev.forb.dforblock.neoforge
 
-import dev.forb.dforblock.core.DForBlock
-import dev.forb.dforblock.core.GameMessageData
-import dev.forb.dforblock.core.IBlockyCommunicator
-import dev.forb.dforblock.core.JSON
-import dev.forb.dforblock.core.LOGGER
-import dev.forb.dforblock.core.MCAdvancementMadeData
-import dev.forb.dforblock.core.MinecraftCommunicator
-import dev.forb.dforblock.core.PlayerData
-import dev.forb.dforblock.core.PlayerDeathData
-import dev.forb.dforblock.core.PlayerJoinLeaveData
+import dev.forb.dforblock.core.*
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.discord.LogtoDiscordHandler
 import kotlinx.coroutines.delay
@@ -71,7 +62,7 @@ class DForBlockNeoForge(val configDir: Path) {
 
     var consoleAppender: AbstractAppender? = null
 
-    var dForBlock: DForBlock? = null
+    var dForBlockOrchestrator: DForBlockOrchestrator? = null
         private set
     var communicator: IBlockyCommunicator? = null
         private set
@@ -91,15 +82,21 @@ class DForBlockNeoForge(val configDir: Path) {
         startup = Clock.System.now()
         isLuckperms = ModList.get().isLoaded("luckperms")
         configManager = ConfigManager(configDir, JSON)
-        communicator = MinecraftCommunicator(
-            serverLike = NeoForgeServerLike(event.server, startup),
-            configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
+        communicator = ModdedMinecraftCommunicator(
+            serverLike = NeoForgeModdedServerLike(event.server, startup),
+            configManager = configManager
+                ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
             playerAudience = { minecraftServerAudiences?.players() },
             isLuckperms = isLuckperms,
             configDir = configDir
         )
-        dForBlock = DForBlock(configManager?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." }, communicator?:return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock..." })
-        dForBlock?.start() ?: return LOGGER.error { "Unexpected state, 'dForBlock is null' while starting dForBlock..." }
+        dForBlockOrchestrator = DForBlockOrchestrator(
+            configManager
+                ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dforBlock..." },
+            communicator
+                ?: return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock..." })
+        dForBlockOrchestrator?.start()
+            ?: return LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforBlock..." }
         if (configManager?.messages?.serverLogs != null) {
             consoleAppender = object :
                 AbstractAppender("DForBlockAppender", null, null, false, Property.EMPTY_ARRAY) {
@@ -130,13 +127,13 @@ class DForBlockNeoForge(val configDir: Path) {
                 displayName = event.player.displayName.string
             )
         )
-        dForBlock?.launch { onBlockyMessageReceive(payload) }
+        dForBlockOrchestrator?.launch { onBlockyMessageReceive(payload) }
     }
 
     @SubscribeEvent
     fun onServerStopped(event: ServerStoppedEvent) {
         runBlocking {
-            dForBlock?.disable() ?: LOGGER.info { "Server stopped but dForBlock was already null..." }
+            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Server stopped but dforBlock was already null..." }
             delay(500.milliseconds) // ensure things got closed properly :/
         }
         consoleAppender?.apply {
@@ -145,7 +142,7 @@ class DForBlockNeoForge(val configDir: Path) {
         }
         consoleAppender = null
         minecraftServerAudiences = null
-        dForBlock = null
+        dForBlockOrchestrator = null
         communicator = null
         configManager = null
     }
@@ -161,7 +158,7 @@ class DForBlockNeoForge(val configDir: Path) {
                 player.displayName.string
             )
         )
-        dForBlock?.launch { onPlayerJoin(payload) }
+        dForBlockOrchestrator?.launch { onPlayerJoin(payload) }
     }
 
     @SubscribeEvent
@@ -175,7 +172,7 @@ class DForBlockNeoForge(val configDir: Path) {
                 player.displayName.string
             )
         )
-        dForBlock?.launch { onPlayerLeave(payload) }
+        dForBlockOrchestrator?.launch { onPlayerLeave(payload) }
     }
 
     @SubscribeEvent
@@ -191,7 +188,7 @@ class DForBlockNeoForge(val configDir: Path) {
             ),
             deathMessage = event.source.getLocalizedDeathMessage(entity).string,
         )
-        dForBlock?.launch { onPlayerDeath(payload) }
+        dForBlockOrchestrator?.launch { onPlayerDeath(payload) }
     }
 
     @SubscribeEvent
@@ -217,7 +214,7 @@ class DForBlockNeoForge(val configDir: Path) {
             playerIdentity = PlayerData.Minecraft(player.uuid, player.name.string, player.displayName.string)
         )
 
-        dForBlock?.launch { onMinecraftAdvancement(payload) }
+        dForBlockOrchestrator?.launch { onMinecraftAdvancement(payload) }
     }
 
 }

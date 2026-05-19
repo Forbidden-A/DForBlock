@@ -6,4 +6,4 @@ main: dev.forb.dforblock.papermc.DForBlockPaper
 api-version: '26.1.2'
 load: STARTUP
 
-authors: [ForbiddenBA]
+authors: [ ForbiddenBA ]

@@ -28,7 +28,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
 
     var consoleAppender: AbstractAppender? = null
 
-    var dForBlock: DForBlock? = null
+    var dForBlockOrchestrator: DForBlockOrchestrator? = null
         private set
     var communicator: IBlockyCommunicator? = null
         private set
@@ -52,20 +52,21 @@ class DForBlockPaper : JavaPlugin(), Listener {
             dataFolder.mkdirs()
         }
         configManager = ConfigManager(configDir, JSON)
-        communicator = MinecraftCommunicator(
-            serverLike = PaperServerLike(this, server, startup),
-            configManager = configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating communicator..." },
-            playerAudience = { server },
+        communicator = PaperCommunicator(
+            configDir = configDir,
             isLuckperms = isLuckperms,
-            configDir = configDir
+            plugin = this
         )
 
-        dForBlock = DForBlock(
-            configManager ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dForBlock..." },
-            communicator ?: return LOGGER.error { "Unexpected state, 'communicator is null' while creating dForBlock..." }
+        dForBlockOrchestrator = DForBlockOrchestrator(
+            configManager
+                ?: return LOGGER.error { "Unexpected state, 'configManager is null' while creating dforBlock..." },
+            communicator
+                ?: return LOGGER.error { "Unexpected state, 'communicator is null' while creating dforBlock..." }
         )
 
-        dForBlock?.start() ?: return LOGGER.error { "Unexpected state, 'dForBlock is null' while starting dForBlock..." }
+        dForBlockOrchestrator?.start()
+            ?: return LOGGER.error { "Unexpected state, 'dForBlockOrchestrator is null' while starting dforBlock..." }
         server.pluginManager.registerEvents(this, this)
 
         if (configManager?.messages?.serverLogs != null) {
@@ -89,7 +90,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
 
     override fun onDisable() {
         runBlocking {
-            dForBlock?.disable() ?: LOGGER.info { "Plugin disabled but dForBlock was already null..." }
+            dForBlockOrchestrator?.disable() ?: LOGGER.info { "Plugin disabled but dforBlock was already null..." }
         }
 
         consoleAppender?.apply {
@@ -98,7 +99,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
         }
 
         consoleAppender = null
-        dForBlock = null
+        dForBlockOrchestrator = null
         communicator = null
         configManager = null
     }
@@ -115,7 +116,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
                 displayName = PlainTextComponentSerializer.plainText().serialize(event.player.displayName())
             )
         )
-        dForBlock?.launch { onBlockyMessageReceive(payload) }
+        dForBlockOrchestrator?.launch { onBlockyMessageReceive(payload) }
     }
 
     @EventHandler
@@ -128,7 +129,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
                 PlainTextComponentSerializer.plainText().serialize(player.displayName())
             )
         )
-        dForBlock?.launch { onPlayerJoin(payload) }
+        dForBlockOrchestrator?.launch { onPlayerJoin(payload) }
     }
 
     @EventHandler
@@ -141,7 +142,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
                 PlainTextComponentSerializer.plainText().serialize(player.displayName())
             )
         )
-        dForBlock?.launch { onPlayerLeave(payload) }
+        dForBlockOrchestrator?.launch { onPlayerLeave(payload) }
     }
 
     @EventHandler
@@ -159,7 +160,7 @@ class DForBlockPaper : JavaPlugin(), Listener {
             ),
             deathMessage = deathMessage,
         )
-        dForBlock?.launch { onPlayerDeath(payload) }
+        dForBlockOrchestrator?.launch { onPlayerDeath(payload) }
     }
 
     @EventHandler
@@ -185,6 +186,6 @@ class DForBlockPaper : JavaPlugin(), Listener {
             )
         )
 
-        dForBlock?.launch { onMinecraftAdvancement(payload) }
+        dForBlockOrchestrator?.launch { onMinecraftAdvancement(payload) }
     }
 }
