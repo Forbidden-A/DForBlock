@@ -21,6 +21,15 @@ java {
     withSourcesJar()
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.apply {
+            add("-Xreturn-value-checker=full")
+            add("-Xwarning-level=RETURN_VALUE_NOT_USED:error")
+        }
+    }
+}
+
 
 fabricApi {
 

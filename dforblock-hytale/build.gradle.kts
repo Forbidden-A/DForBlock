@@ -9,14 +9,20 @@ version = rootProject.version
 
 repositories {
     maven("https://snapshots.kord.dev")
+    maven("https://repo.codemc.io/repository/ArikSquad/")
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.apply {
+            add("-Xreturn-value-checker=full")
+            add("-Xwarning-level=RETURN_VALUE_NOT_USED:error")
+        }
+    }
 }
 
 val shadowed by configurations.registering
 configurations.implementation.get().extendsFrom(shadowed)
-
-repositories {
-    maven("https://repo.codemc.io/repository/ArikSquad/")
-}
 
 dependencies {
     shadowed(project(mapOf("path" to ":dforblock-core", "configuration" to "shadow")))

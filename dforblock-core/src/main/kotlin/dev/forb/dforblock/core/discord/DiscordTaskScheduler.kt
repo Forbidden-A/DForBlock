@@ -124,7 +124,9 @@ class DiscordTaskScheduler(
                                 LOGGER.warn { "Could not find channel '${template.targetChannel}' for server watchdog." }
                                 break
                             }
-                            targetChannel.createMessage(kord, template, null, configManager, communicator, emptyMap())
+                            val success = targetChannel.createMessage(kord, template, null, configManager, communicator, emptyMap())
+                            if (!success)
+                                LOGGER.error { "Failed to send watchdog message!" }
                             isDead = true
                             LOGGER.info { "Server is not responding..." }
                         }

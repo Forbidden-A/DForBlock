@@ -34,10 +34,15 @@ dependencies {
     compileOnly(libs.kotlinx.coroutines)
 }
 
-kotlin {
-    compilerOptions.jvmTarget = JvmTarget.JVM_25
-    compilerOptions.javaParameters = true
+kotlin.compilerOptions.apply {
+    jvmTarget = JvmTarget.JVM_25
+    javaParameters = true
+    freeCompilerArgs.apply {
+        add("-Xreturn-value-checker=full")
+        add("-Xwarning-level=RETURN_VALUE_NOT_USED:error")
+    }
 }
+
 
 tasks.shadowJar {
     configurations = listOf(project.configurations["shadowed"])

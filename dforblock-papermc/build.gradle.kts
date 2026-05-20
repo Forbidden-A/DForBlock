@@ -13,6 +13,15 @@ repositories {
 
 version = rootProject.version
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.apply {
+            add("-Xreturn-value-checker=full")
+            add("-Xwarning-level=RETURN_VALUE_NOT_USED:error")
+        }
+    }
+}
+
 val shadowed by configurations.creating
 configurations.implementation.get().extendsFrom(shadowed)
 

@@ -37,6 +37,15 @@ repositories {
     maven("https://snapshots.kord.dev")
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.apply {
+            add("-Xreturn-value-checker=full")
+            add("-Xwarning-level=RETURN_VALUE_NOT_USED:error")
+        }
+    }
+}
+
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 kotlin.jvmToolchain(25)
 

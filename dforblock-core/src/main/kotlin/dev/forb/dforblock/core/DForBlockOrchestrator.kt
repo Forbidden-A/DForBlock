@@ -24,6 +24,9 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
     var botManager: DiscordBotManager? = null
         private set
 
+    lateinit var kordLife: Job
+
+    @IgnorableReturnValue
     fun launch(block: suspend DForBlockOrchestrator.() -> Unit) = botManager?.botScope?.launch { block() }
 
     @OptIn(PrivilegedIntent::class)
@@ -36,7 +39,7 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
         if (!isConfigLoaded)
             return LOGGER.error { "Start up halted: Failed to load config file." }
 
-        botManager?.start() ?: LOGGER.error { "Failed to start DForBlock, botManager was null." }
+        kordLife = botManager?.start() ?: return LOGGER.error { "Failed to start DForBlock, botManager was null." }
     }
 
     fun disable() = runBlocking(Dispatchers.Default) {
