@@ -131,7 +131,12 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
                     placeholders = placeholders,
                     identifier = "SERVER_STOP",
                 )
-                botManager.enqueueMessageCreation(request)
+                botManager.kord?.let {
+                    val success = request.fulfil(it)
+                    if (success)
+                        return@launch
+                }
+                LOGGER.error { "Failed to send server stop message." }
             }
         } ?: LOGGER.error { "Tried to handle server stop event but botManager is null." }
         return null

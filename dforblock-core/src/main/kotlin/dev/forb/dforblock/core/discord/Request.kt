@@ -66,7 +66,7 @@ data class MessageCreateRequest(
             return fulfilAsNormal(kord)
         } catch (e: Exception) {
             if (e is CancellationException || e.cause is CancellationException || e.toString().contains("CancellationException")) {
-                LOGGER.info { "Message creation was cancelled for message '$identifier'" + e.cause?.let { "\n${it.message ?: it.stackTraceToString()}" } }
+                LOGGER.info { "Message creation was cancelled for message '$identifier'" + (e.cause?.let { "\n${it.message ?: it.stackTraceToString()}" }?:"") }
             }
             else {
                 LOGGER.error { "Message creation failed for message '$identifier': ${e.message}\n${e.stackTraceToString()}" }
