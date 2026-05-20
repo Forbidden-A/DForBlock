@@ -10,16 +10,13 @@ import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
-import java.util.Collections.emptySet
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Clock
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 class DiscordTaskScheduler(
     internal val schedulerScope: CoroutineScope,
@@ -154,11 +151,15 @@ class DiscordTaskScheduler(
     private var sendMessagesJob : Job? = null
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun startSendingMessages() =
-        messageQueue.receiveAsFlow().collect { request ->
-            val success = request.fulfil(kord)
-            if (!success)
-                LOGGER.error { "Failed to fulfil message create request: ${request.identifier}" }
-        }
+        messageQueue.receiveAsFlow().flatMapMerge(concurrency = 32) { request ->
+            flow {
+                val success = request.fulfil(kord)
+                if (!success) {
+                    LOGGER.error { "Failed to fulfil message create request: ${request.identifier}" }
+                }
+                emit(Unit)
+            }
+        }.collect()
 
 
     fun start() {
