@@ -151,35 +151,15 @@ class DiscordTaskScheduler(
         }
     }
 
-    private val lastSentInstants = ConcurrentHashMap<ULong, Instant>()
-    private val messageDelay = 4.seconds
-
-    suspend fun delayForChannel(channelId: ULong) {
-        val now = Clock.System.now()
-        val lastSentInstant = lastSentInstants[channelId] ?: Instant.DISTANT_PAST
-        val targetExecutionInstant = maxOf(now, lastSentInstant + messageDelay)
-        lastSentInstants[channelId] = targetExecutionInstant
-
-        val delayNeeded = targetExecutionInstant - now
-        if (delayNeeded > Duration.ZERO) {
-            delay(delayNeeded)
-        }
-    }
-
     private var sendMessagesJob : Job? = null
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun startSendingMessages() {
-        messageQueue.receiveAsFlow().flatMapMerge(100) { request ->
-            flow {
-                delayForChannel(request.targetChannel.second.channelId)
-                emit(request)
-            }
-        }.collect { request ->
+    private suspend fun startSendingMessages() =
+        messageQueue.receiveAsFlow().collect { request ->
             val success = request.fulfil(kord)
             if (!success)
                 LOGGER.error { "Failed to fulfil message create request: ${request.identifier}" }
         }
-    }
+
 
     fun start() {
         sendMessagesJob = schedulerScope.launch { startSendingMessages() }
@@ -220,7 +200,7 @@ class DiscordTaskScheduler(
         watchdogJob?.cancel()
         watchdogJob = null
         updateChannelJobs.forEach { it.cancel() }
-        updateChannelJobs = emptySet()
+        updateChannelJobs.clear()
         LOGGER.info { "Stopping log batching job." }
         LogtoDiscordHandler.stopFlushing()
         LOGGER.info { "Stopped log batching successfully." }

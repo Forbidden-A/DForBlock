@@ -138,9 +138,6 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
     }
 
     suspend fun onPlayerJoin(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to handle player join before discord is ready, message will not be sent." }
-
         val template = configManager.messages.playerJoins ?: return@let
         if (!template.isEnabled) return@let
 
@@ -165,9 +162,6 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
     } ?: LOGGER.error { "Tried to handle player join event but botManager is null." }
 
     suspend fun onPlayerLeave(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to handle player leave before discord is ready, message will not be sent." }
-
         val template = configManager.messages.playerLeaves ?: return@let
         if (!template.isEnabled) return@let
 
@@ -192,9 +186,6 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
     } ?: LOGGER.error { "Tried to handle player leave event but botManager is null." }
 
     suspend fun onPlayerDeath(payload: PlayerDeathData) = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to handle player death before discord is ready, message will not be sent." }
-
         val template = configManager.messages.playerDies ?: return@let
         if (!template.isEnabled) return@let
 
@@ -222,9 +213,6 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
     } ?: LOGGER.error { "Tried to handle player death event but botManager is null." }
 
     suspend fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to handle mc player advancement before discord is ready, message will not be sent." }
-
         val template = configManager.messages.mcPlayerAdvances ?: return@let
         if (!template.isEnabled) return@let
 

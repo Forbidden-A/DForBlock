@@ -118,7 +118,7 @@ fun prepareMiniMessage(payload: DiscordMessageData, channelName: String, templat
 fun MessageTemplate.webhookRequest(configManager: ConfigManager, communicator: IBlockyCommunicator, playerIdentity: PlayerData?): WebhookRequest? {
     return if (asWebhook) {
         val username = webhookPersonaName ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaName
-        val avatarUrl = webhookPersonaAvatarUrl ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaAvatarUrl
+        val avatarUrl = webhookPersonaAvatarUrl ?: playerIdentity?.buildAvatarUrl(configManager) ?: configManager.core.serverPersonaAvatarUrl
         WebhookRequest(username, avatarUrl, container != null)
     } else null
 }
