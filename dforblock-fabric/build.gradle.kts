@@ -32,6 +32,11 @@ val fabricApiVersion: String by project
 val kotlinLoaderVersion: String by project
 val kyoriAdventureFabricVersion: String by project
 
+repositories {
+    maven("https://maven.fabricmc.net/")
+    maven("https://snapshots.kord.dev")
+}
+
 dependencies {
     minecraft("com.mojang:minecraft:$minecraftVersion")
     implementation("net.fabricmc:fabric-loader:$loaderVersion")

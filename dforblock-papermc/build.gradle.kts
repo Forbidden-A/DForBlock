@@ -7,8 +7,8 @@ plugins {
 val minecraftVersion: String by rootProject
 
 repositories {
-    mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://snapshots.kord.dev")
 }
 
 version = rootProject.version

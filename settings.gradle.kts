@@ -1,9 +1,9 @@
 include(
     ":dforblock-core",
-    ":dforblock-fabric",
-    ":dforblock-neoforge",
-    ":dforblock-papermc",
     ":dforblock-hytale",
+    ":dforblock-neoforge",
+    ":dforblock-fabric",
+    ":dforblock-papermc",
     )
 
 rootProject.name = "dforblock"

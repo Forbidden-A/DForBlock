@@ -10,9 +10,7 @@ group = "dev.forb.dforblock"
 version = rootProject.version as String
 
 repositories {
-    mavenCentral()
     maven("https://snapshots.kord.dev")
-
 }
 
 val shadowed by configurations.registering

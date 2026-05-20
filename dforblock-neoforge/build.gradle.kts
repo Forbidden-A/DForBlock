@@ -34,6 +34,7 @@ repositories {
             includeGroup("thedarkcolour")
         }
     }
+    maven("https://snapshots.kord.dev")
 }
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(25))

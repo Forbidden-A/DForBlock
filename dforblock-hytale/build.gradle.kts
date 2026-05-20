@@ -8,7 +8,7 @@ group = "dev.forb"
 version = rootProject.version
 
 repositories {
-    mavenCentral()
+    maven("https://snapshots.kord.dev")
 }
 
 val shadowed by configurations.registering

@@ -10,6 +10,5 @@ version = property("version") as String
 allprojects {
     repositories {
         mavenCentral()
-        maven { url = uri("https://snapshots.kord.dev") }
     }
 }
