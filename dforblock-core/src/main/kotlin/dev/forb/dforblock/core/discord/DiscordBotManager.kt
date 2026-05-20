@@ -4,7 +4,7 @@ import dev.forb.dforblock.core.DForBlockOrchestrator
 import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.config.ConfigManager
-import dev.forb.dforblock.core.constructMessage
+import dev.forb.dforblock.core.webhookRequest
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.event.gateway.DisconnectEvent
@@ -19,6 +19,8 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlin.time.Duration.Companion.seconds
 
 class DiscordBotManager(
@@ -49,12 +51,18 @@ class DiscordBotManager(
     var kord: Kord? = null
         private set
 
+    private val messageQueue = Channel<MessageCreateRequest>(
+        capacity = 100,
+        onBufferOverflow = BufferOverflow.SUSPEND
+    )
+
     var taskScheduler: DiscordTaskScheduler? = null
         private set
 
     var discordEventHandler: DiscordEventHandler? = null
         private set
 
+    suspend fun enqueueMessageCreation(message: MessageCreateRequest) = messageQueue.send(message)
 
     suspend fun createGuildCommands(kord: Kord, guildId: ULong) {
         @Suppress("UnusedFlow")
@@ -115,7 +123,7 @@ class DiscordBotManager(
 
                 kord.on<DisconnectEvent> { LOGGER.info { "Gateway disconnected." } }
             }
-            taskScheduler = DiscordTaskScheduler(taskScope, configManager, kord, communicator)
+            taskScheduler = DiscordTaskScheduler(taskScope, configManager, kord, communicator, messageQueue)
         }
         isInitialised = true
     }
@@ -130,10 +138,15 @@ class DiscordBotManager(
                     if (template != null) {
                         val targetChannel = configManager.channels[template.targetChannel]
                         targetChannel?.let { targetChannel ->
-                            rest.channel.createMessage(
-                                Snowflake(targetChannel.channelId),
-                                constructMessage(template, mapOf("{batch}" to batch))
+                            val request = MessageCreateRequest(
+                                targetChannel = template.targetChannel to targetChannel,
+                                template = template,
+                                placeholders = mapOf("{batch}" to batch),
+                                webhookPersona = template.webhookRequest(configManager, communicator, null),
+                                identifier = "LOG_INTERCEPTOR_FLUSH"
                             )
+                            if (!request.fulfil(this))
+                                LOGGER.error { "Failed to flush log interceptor." }
                         }
                     }
                 }
@@ -155,5 +168,7 @@ class DiscordBotManager(
         discordEventHandler = null
         LOGGER.info { "Goodbye." }
     }
+
+
 
 }

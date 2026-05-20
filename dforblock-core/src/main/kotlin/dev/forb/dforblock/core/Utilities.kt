@@ -1,10 +1,9 @@
 package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.*
+import dev.forb.dforblock.core.discord.WebhookRequest
 import dev.kord.common.entity.MessageFlag
 import dev.kord.common.entity.MessageFlags
-import dev.kord.common.entity.Snowflake
-import dev.kord.core.Kord
 import dev.kord.core.entity.interaction.GuildInteraction
 import dev.kord.rest.builder.component.separator
 import dev.kord.rest.builder.component.textDisplay
@@ -12,7 +11,6 @@ import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.MessageBuilder
 import dev.kord.rest.builder.message.container
 import dev.kord.rest.builder.message.embed
-import io.ktor.utils.io.*
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -117,63 +115,13 @@ fun prepareMiniMessage(payload: DiscordMessageData, channelName: String, templat
     return miniMessage.deserialize(processedString)
 }
 
-suspend fun ChannelConfig.createMessage(
-    kord: Kord,
-    template: MessageTemplate,
-    playerIdentity: PlayerData?,
-    configManager: ConfigManager,
-    communicator: IBlockyCommunicator,
-    placeholders: Map<String, String>? = null,
-    messageBuilder: MessageBuilder.() -> Unit
-): Boolean {
-    return try {
-        if (template.asWebhook) {
-            if (!allowsWebhooks)
-                return false.also { LOGGER.error { "Could not create webhook message as channel '${template.targetChannel}' does not allow webhooks." } }
-            val withComponents = template.container != null
-            kord.rest.webhook.executeWebhook(
-                webhookId = Snowflake(webhookId!!),
-                token = webhookToken!!,
-                withComponents = withComponents
-            ) {
-                username = template.webhookPersonaName?.withPlaceholders(placeholders) ?: playerIdentity?.qualifiedName(
-                    configManager,
-                    communicator
-                ) ?: configManager.core.serverPersonaName?.withPlaceholders(placeholders)
-                avatarUrl =
-                    template.webhookPersonaAvatarUrl?.withPlaceholders(placeholders) ?: playerIdentity?.buildAvatarUrl(
-                        configManager
-                    ) ?: configManager.core.serverPersonaAvatarUrl?.withPlaceholders(placeholders)
-                messageBuilder()
-            }
-            return true
-        }
-        kord.rest.channel.createMessage(Snowflake(channelId), messageBuilder)
-        true
-    } catch (_: CancellationException) {
-        false
-    } catch (e: Exception) {
-        LOGGER.error { "Could not create message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
-        false
-    }
+fun MessageTemplate.webhookRequest(configManager: ConfigManager, communicator: IBlockyCommunicator, playerIdentity: PlayerData?): WebhookRequest? {
+    return if (asWebhook) {
+        val username = webhookPersonaName ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaName
+        val avatarUrl = webhookPersonaAvatarUrl ?: playerIdentity?.qualifiedName(configManager, communicator) ?: configManager.core.serverPersonaAvatarUrl
+        WebhookRequest(username, avatarUrl, container != null)
+    } else null
 }
-
-suspend fun ChannelConfig.createMessage(
-    kord: Kord,
-    template: MessageTemplate,
-    playerIdentity: PlayerData?,
-    configManager: ConfigManager,
-    communicator: IBlockyCommunicator,
-    placeholders: Map<String, String>? = null
-): Boolean = createMessage(
-    kord,
-    template,
-    playerIdentity,
-    configManager,
-    communicator,
-    placeholders,
-    constructMessage(template, placeholders ?: emptyMap())
-)
 
 fun constructMessage(messageTemplate: MessageTemplate, placeholders: Map<String, String>): MessageBuilder.() -> Unit = {
     if (messageTemplate.container != null) {

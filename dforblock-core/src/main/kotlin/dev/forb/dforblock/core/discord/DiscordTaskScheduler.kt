@@ -9,22 +9,26 @@ import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.rest.json.request.ChannelModifyPatchRequest
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import java.util.Collections.emptySet
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class DiscordTaskScheduler(
     internal val schedulerScope: CoroutineScope,
     private val configManager: ConfigManager,
     private var kord: Kord,
-    private val communicator: IBlockyCommunicator
+    private val communicator: IBlockyCommunicator,
+    private val messageQueue: Channel<MessageCreateRequest>
 ) {
     private var updateChannelJobs: MutableSet<Job> = ConcurrentHashMap.newKeySet()
-    private var updatePresenceJob: Job? = null
-
-    private var watchdogJob: Job? = null
-
     private suspend fun CoroutineScope.updateChannel(channelName: String, targetChannel: ChannelConfig) {
         try {
             if (targetChannel.topicTemplate == null) {
@@ -55,6 +59,7 @@ class DiscordTaskScheduler(
         }
     }
 
+    private var updatePresenceJob: Job? = null
     private val updatePresenceBlock: suspend CoroutineScope.() -> Unit = {
         try {
             while (isActive) {
@@ -96,6 +101,7 @@ class DiscordTaskScheduler(
         }
     }
 
+    private var watchdogJob: Job? = null
     private val watchdogBlock: suspend CoroutineScope.() -> Unit = {
         try {
             var isDead = false
@@ -124,9 +130,13 @@ class DiscordTaskScheduler(
                                 LOGGER.warn { "Could not find channel '${template.targetChannel}' for server watchdog." }
                                 break
                             }
-                            val success = targetChannel.createMessage(kord, template, null, configManager, communicator, emptyMap())
-                            if (!success)
-                                LOGGER.error { "Failed to send watchdog message!" }
+                            val request = MessageCreateRequest(
+                                targetChannel = template.targetChannel to targetChannel,
+                                template = template,
+                                webhookPersona = template.webhookRequest(configManager, communicator, null),
+                                identifier = "SERVER_WATCHDOG_SIREN"
+                            )
+                            messageQueue.send(request)
                             isDead = true
                             LOGGER.info { "Server is not responding..." }
                         }
@@ -141,10 +151,43 @@ class DiscordTaskScheduler(
         }
     }
 
+    private val lastSentInstants = ConcurrentHashMap<ULong, Instant>()
+    private val messageDelay = 4.seconds
+
+    suspend fun delayForChannel(channelId: ULong) {
+        val now = Clock.System.now()
+        val lastSentInstant = lastSentInstants[channelId] ?: Instant.DISTANT_PAST
+        val targetExecutionInstant = maxOf(now, lastSentInstant + messageDelay)
+        lastSentInstants[channelId] = targetExecutionInstant
+
+        val delayNeeded = targetExecutionInstant - now
+        if (delayNeeded > Duration.ZERO) {
+            delay(delayNeeded)
+        }
+    }
+
+    private var sendMessagesJob : Job? = null
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun startSendingMessages() {
+        messageQueue.receiveAsFlow().flatMapMerge(100) { request ->
+            flow {
+                delayForChannel(request.targetChannel.second.channelId)
+                emit(request)
+            }
+        }.collect { request ->
+            val success = request.fulfil(kord)
+            if (!success)
+                LOGGER.error { "Failed to fulfil message create request: ${request.identifier}" }
+        }
+    }
+
     fun start() {
+        sendMessagesJob = schedulerScope.launch { startSendingMessages() }
+        LOGGER.info { "Started sending queued messages." }
+
         configManager.messages.serverLogs?.let { template ->
             configManager.channels[template.targetChannel]?.let { targetChannel ->
-                LogtoDiscordHandler.startFlushing(schedulerScope, kord, template, targetChannel)
+                LogtoDiscordHandler.startFlushing(schedulerScope, kord, template, targetChannel, configManager, communicator)
                 LOGGER.info { "Started sending log batches in channel '${template.targetChannel}'." }
             } ?: LOGGER.warn { "Could not find channel '${template.targetChannel}' for server logs." }
         }
@@ -170,6 +213,8 @@ class DiscordTaskScheduler(
     }
 
     fun stop() {
+        messageQueue.close()
+        LOGGER.info { "Closed message creation request queue." }
         updatePresenceJob?.cancel()
         updatePresenceJob = null
         watchdogJob?.cancel()

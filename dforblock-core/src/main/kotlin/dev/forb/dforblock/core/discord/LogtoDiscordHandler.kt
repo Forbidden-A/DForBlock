@@ -1,15 +1,15 @@
 package dev.forb.dforblock.core.discord
 
+import dev.forb.dforblock.core.IBlockyCommunicator
 import dev.forb.dforblock.core.LOGGER
 import dev.forb.dforblock.core.config.ChannelConfig
+import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.config.ContainerElementTextDisplay
 import dev.forb.dforblock.core.config.MessageTemplate
-import dev.forb.dforblock.core.constructMessage
-import dev.kord.common.entity.Snowflake
+import dev.forb.dforblock.core.webhookRequest
 import dev.kord.core.Kord
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentLinkedDeque
-import kotlin.collections.forEach
 import kotlin.math.min
 import kotlin.time.Duration.Companion.seconds
 
@@ -58,7 +58,7 @@ object LogtoDiscordHandler {
         return null
     }
 
-    fun startFlushing(scope: CoroutineScope, kord: Kord, template: MessageTemplate, targetChannel: ChannelConfig) {
+    fun startFlushing(scope: CoroutineScope, kord: Kord, template: MessageTemplate, targetChannel: ChannelConfig, configManager: ConfigManager, communicator: IBlockyCommunicator) {
         if (flushJob != null) return
 
         if (_messageSizeLimit == null) {
@@ -129,13 +129,18 @@ object LogtoDiscordHandler {
                 val batch = flush()
                 if (!batch.isNullOrBlank()) {
                     try {
-                        kord.rest.channel.createMessage(
-                            Snowflake(targetChannel.channelId),
-                            constructMessage(template, mapOf("{batch}" to batch))
+                        val request = MessageCreateRequest(
+                            targetChannel = template.targetChannel to targetChannel,
+                            template = template,
+                            placeholders = mapOf("{batch}" to batch),
+                            webhookPersona = template.webhookRequest(configManager, communicator, null),
+                            identifier = "LOG_INTERCEPTOR_LOG_BATCH"
                         )
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        LOGGER.error { "Failed to create console log batch message in channel '${template.targetChannel}': ${e.message}\n${e.stackTraceToString()}" }
+                        val success = request.fulfil(kord)
+                        if (!success)
+                            LOGGER.error { "Failed to send log batch to '${template.targetChannel}'" }
+                    } catch (e: CancellationException) {
+                        throw e
                     }
                 }
                 delay(4.seconds)

@@ -2,6 +2,8 @@ package dev.forb.dforblock.core
 
 import dev.forb.dforblock.core.config.ConfigManager
 import dev.forb.dforblock.core.discord.DiscordBotManager
+import dev.forb.dforblock.core.discord.DiscordTaskScheduler
+import dev.forb.dforblock.core.discord.MessageCreateRequest
 import dev.kord.gateway.PrivilegedIntent
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
@@ -22,6 +24,9 @@ val JSON = Json {
 class DForBlockOrchestrator(private val configManager: ConfigManager, private val communicator: IBlockyCommunicator) {
 
     var botManager: DiscordBotManager? = null
+        private set
+
+    var taskScheduler: DiscordTaskScheduler? = null
         private set
 
     lateinit var kordLife: Job
@@ -63,9 +68,6 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
      */
 
     suspend fun onBlockyMessageReceive(payload: GameMessageData) = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to handle game message before discord is ready, message will not be sent." }
-
         val template = configManager.messages.playerChats ?: return@let
         if (!template.isEnabled) return@let
 
@@ -80,58 +82,39 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
         val channel = configManager.channels[payload.channelName] ?: configManager.channels[template.targetChannel]
         ?: return@let LOGGER.warn { "Failed to find channel with name '${payload.channelName}', are you sure it's configured?" }
 
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord, template, payload.playerIdentity,
-                    configManager, communicator, placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle game message." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle game message but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = payload.channelName to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, payload.playerIdentity),
+                placeholders = placeholders,
+                identifier = "PLAYER_${payload.playerIdentity.name.uppercase()}_MESSAGE_CREATE",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle game message but botManager is null." }
 
     suspend fun onServerStart() = botManager?.let { botManager ->
-        if (!botManager.isReady)
-            return@let LOGGER.warn { "Attempted to send startup message before discord is ready, message will not be sent." }
-
         val template = configManager.messages.serverStarts ?: return@let
         if (!template.isEnabled) return@let
         val placeholders = buildCommonPlaceholders(communicator)
         val channel = configManager.channels[template.targetChannel]
             ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord,
-                    template,
-                    null,
-                    configManager,
-                    communicator,
-                    placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle server start event." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle server start event but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = template.targetChannel to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, null),
+                placeholders = placeholders,
+                identifier = "SERVER_START",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle server start event but botManager is null." }
 
     suspend fun onServerStop(): Job? {
-        if (botManager == null) {
-            LOGGER.error { "Tried to handle server stop event but botManager is null." }
-            return null
-        }
-
         botManager?.let { botManager ->
-            if (!botManager.isReady) {
-                LOGGER.warn { "Attempted to send shutdown message while discord is not ready, message will not be sent." }
-                return null
-            }
-
             val template = configManager.messages.serverStops ?: return null
             if (!template.isEnabled) return null
             val placeholders = buildCommonPlaceholders(communicator)
@@ -140,19 +123,17 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
                     LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
                     return null
                 }
-            botManager.kord?.let { kord ->
-                return botManager.botScope.launch {
-                    val success = channel.createMessage(
-                        kord, template, null,
-                        configManager, communicator, placeholders
-                    )
-                    if (!success) {
-                        LOGGER.warn { "Failed to handle server stop event." }
-                    }
-                }
-            } ?: LOGGER.error { "Tried to handle server stop event but kord is null." }
+            return botManager.botScope.launch {
+                val request = MessageCreateRequest(
+                    targetChannel = template.targetChannel to channel,
+                    template = template,
+                    webhookPersona = template.webhookRequest(configManager, communicator, null),
+                    placeholders = placeholders,
+                    identifier = "SERVER_STOP",
+                )
+                botManager.enqueueMessageCreation(request)
+            }
         } ?: LOGGER.error { "Tried to handle server stop event but botManager is null." }
-
         return null
     }
 
@@ -171,18 +152,16 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
         val channel = configManager.channels[template.targetChannel]
             ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
 
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord, template, payload.playerIdentity,
-
-                    configManager, communicator, placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle player join event." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle player join event but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = template.targetChannel to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, payload.playerIdentity),
+                placeholders = placeholders,
+                identifier = "PLAYER_${payload.playerIdentity.name.uppercase()}_JOIN_SERVER",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle player join event but botManager is null." }
 
     suspend fun onPlayerLeave(payload: PlayerJoinLeaveData) = botManager?.let { botManager ->
@@ -199,18 +178,17 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
         )
         val channel = configManager.channels[template.targetChannel]
             ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord, template, payload.playerIdentity,
 
-                    configManager, communicator, placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle player leave event." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle player leave event but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = template.targetChannel to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, payload.playerIdentity),
+                placeholders = placeholders,
+                identifier = "PLAYER_${payload.playerIdentity.name.uppercase()}_LEAVE_SERVER",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle player leave event but botManager is null." }
 
     suspend fun onPlayerDeath(payload: PlayerDeathData) = botManager?.let { botManager ->
@@ -230,18 +208,17 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
                 )
         val channel = configManager.channels[template.targetChannel]
             ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord, template, payload.playerIdentity,
 
-                    configManager, communicator, placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle player death event." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle player death event but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = template.targetChannel to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, payload.playerIdentity),
+                placeholders = placeholders,
+                identifier = "PLAYER_${payload.playerIdentity.name.uppercase()}_DEATH",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle player death event but botManager is null." }
 
     suspend fun onMinecraftAdvancement(payload: MCAdvancementMadeData) = botManager?.let { botManager ->
@@ -263,18 +240,17 @@ class DForBlockOrchestrator(private val configManager: ConfigManager, private va
                 )
         val channel = configManager.channels[template.targetChannel]
             ?: return@let LOGGER.warn { "Failed to find channel with name '${template.targetChannel}', are you sure it's configured?" }
-        botManager.kord?.let { kord ->
-            botManager.botScope.launch {
-                val success = channel.createMessage(
-                    kord, template, payload.playerIdentity,
 
-                    configManager, communicator, placeholders
-                )
-                if (!success) {
-                    LOGGER.warn { "Failed to handle mc player advancement event." }
-                }
-            }
-        } ?: LOGGER.error { "Tried to handle mc player advancement event but kord is null." }
+        botManager.botScope.launch {
+            val request = MessageCreateRequest(
+                targetChannel = template.targetChannel to channel,
+                template = template,
+                webhookPersona = template.webhookRequest(configManager, communicator, payload.playerIdentity),
+                placeholders = placeholders,
+                identifier = "MC_PLAYER_${payload.playerIdentity.name.uppercase()}_ADVANCED",
+            )
+            botManager.enqueueMessageCreation(request)
+        }
     } ?: LOGGER.error { "Tried to handle mc player advancement but kord is null." }
 
 }
